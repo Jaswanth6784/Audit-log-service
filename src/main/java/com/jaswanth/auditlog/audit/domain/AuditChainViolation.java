@@ -1,0 +1,12 @@
+package com.jaswanth.auditlog.audit.domain;
+
+public enum AuditChainViolation {
+    CHAIN_HEAD_MISSING,
+    SEQUENCE_GAP,
+    UNSUPPORTED_HASH_VERSION,
+    PREVIOUS_HASH_MISMATCH,
+    CONTENT_HASH_MISMATCH,
+    RECORD_HASH_MISMATCH,
+    CHAIN_HEAD_SEQUENCE_MISMATCH,
+    CHAIN_HEAD_HASH_MISMATCH
+}

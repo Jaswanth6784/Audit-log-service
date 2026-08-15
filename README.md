@@ -4,7 +4,7 @@ Production-oriented prototype of an append-only, tamper-evident audit log servic
 
 ## Current milestone
 
-Milestone 3 provides immutable event append plus filtered, sequence-ordered reads with stable keyset pagination. Chain verification and the Scenario B extensions remain intentionally deferred to later reviewed milestones.
+Milestone 4 provides immutable event append, filtered sequence-ordered reads, and complete hash-chain verification with first-failure diagnostics. The Scenario B extensions remain intentionally deferred to later reviewed milestones.
 
 ## Prerequisites
 
@@ -71,6 +71,20 @@ Pagination rules:
 - Archived rows are excluded from normal queries so the contract remains compatible with the later retention milestone.
 
 Useful Bruno validation checks are `limit=201`, `afterSequence=-1`, a blank string filter, and a `from` instant equal to or later than `to`; each must return HTTP 400.
+
+## Verify the audit chain
+
+Create a Bruno GET request to:
+
+```text
+http://localhost:8080/audit/verification
+```
+
+A clean chain returns HTTP 200 with `valid: true`, the number of verified events, and the current chain-head sequence. A broken chain also returns HTTP 200 because the verification operation completed successfully; inspect `valid`, `firstInvalidSequence`, `violationType`, and `detail` for the integrity result.
+
+To demonstrate tamper detection locally, append at least two events and directly alter an assignment event field in the H2 console or database client—for example, change the second row's `actor_id`. The next verification should return `CONTENT_HASH_MISMATCH` at sequence 2. Direct database modification is deliberately used only as a verification test; the application exposes no update or delete audit-event API.
+
+Violation types distinguish a missing chain head, sequence gap, unsupported hash version, predecessor-link mismatch, content-hash mismatch, record-hash mismatch, and chain-head sequence/hash mismatch.
 
 ## Optional PostgreSQL setup
 

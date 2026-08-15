@@ -40,6 +40,12 @@ The read API composes optional exact-match and time-range predicates through JPA
 
 Each query requests `limit + 1` rows. The extra row establishes `hasMore` without a potentially expensive `COUNT(*)`; only the requested page is returned. `nextAfterSequence` is the last returned sequence, or the input cursor for an empty page. Event time uses a half-open interval (`from` inclusive, `to` exclusive), which makes adjacent windows composable without overlap.
 
+## Verification path
+
+Verification reads the chain head and streams every event in sequence order inside a repeatable-read, read-only transaction. Unlike normal queries, the scan includes archived events because retention must not create an integrity blind spot. For each record it checks sequence continuity, supported hash version, the predecessor link, canonical content hash, and record hash, stopping at the first violation. Once all records pass, it compares the final sequence and hash with the stored chain head.
+
+The pure domain verifier owns the violation taxonomy and has no JPA or HTTP dependencies. The application layer only supplies a consistent database snapshot and maps persistence entities into verifier inputs. Full verification is intentionally O(n); for a very large production chain, the same algorithm should run as a controlled background job with persisted progress and an externally anchored checkpoint rather than occupying a synchronous request for an unbounded duration.
+
 ## Database profiles
 
 H2 in PostgreSQL compatibility mode is the default for rapid local development. PostgreSQL is the intended production database. Flyway is the only schema owner; Hibernate validates rather than creates schema. PostgreSQL-specific locking and type behavior must be tested with Testcontainers before production claims are made.

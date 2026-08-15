@@ -33,3 +33,11 @@ This log records material AI assistance and the engineer's decision for traceabi
 - Engineer decision: Reviewed and explicitly approved for commit and push on 2026-08-15.
 - Modifications after validation: Assigned the query integration test a dedicated in-memory H2 URL after Spring's test-context cache exposed cross-class fixture coupling. Added explicit handling for method-level `ConstraintViolationException` so invalid pagination parameters return HTTP 400 instead of 500.
 - Validation: Eight tests pass, including combined/exact filters, time bounds, multi-page cursor traversal, empty incremental polling, and invalid query inputs. JaCoCo line and branch gates pass.
+
+## 2026-08-15 - Milestone 4 chain verification
+
+- Intent: Verify the complete global hash chain, identify the first inconsistency and violation type, and demonstrate detection after direct database modification.
+- AI contribution: Proposed and implemented a persistence-independent verifier, explicit violation taxonomy, repeatable-read streaming service, verification HTTP contract, Swagger metadata, unit coverage for every violation branch, and an end-to-end SQL tampering test.
+- Engineer decision: Reviewed and explicitly approved for commit and push on 2026-08-15.
+- Design boundary: Verification includes archived rows and returns HTTP 200 for both valid and invalid integrity results because transport success is distinct from the reported verification outcome. Full-chain verification remains synchronous for this prototype; background checkpointed verification is documented as the production scaling path.
+- Validation: Twelve tests pass. A three-event integration fixture verifies cleanly, then a direct SQL update to sequence 2 is reported as `CONTENT_HASH_MISMATCH` with one preceding event verified. JaCoCo line and branch gates pass.
