@@ -4,7 +4,7 @@ Production-oriented prototype of an append-only, tamper-evident audit log servic
 
 ## Current milestone
 
-Milestone 1 provides the application foundation only. The audit APIs and hash-chain behavior are intentionally deferred to later reviewed milestones.
+Milestone 3 provides immutable event append plus filtered, sequence-ordered reads with stable keyset pagination. Chain verification and the Scenario B extensions remain intentionally deferred to later reviewed milestones.
 
 ## Prerequisites
 
@@ -50,6 +50,27 @@ curl --request POST http://localhost:8080/audit/events \
 ```
 
 `timestamp` is optional. When omitted, the server assigns the current UTC time. The service always adds a separate server-controlled `recordedAt` value. Both values are normalized to microsecond precision before hashing so H2 and PostgreSQL round-trips remain consistent.
+
+## Query audit events
+
+`GET /audit/events` accepts any combination of `actorId`, `resourceType`, `resourceId`, `eventType`, `from`, and `to`. String filters are exact matches. `from` is inclusive, `to` is exclusive, and both use ISO-8601 instants. Results are always ordered by the immutable `sequenceNumber`.
+
+In Bruno, create a GET request to:
+
+```text
+http://localhost:8080/audit/events?actorId=user-123&resourceType=ACCOUNT&from=2026-08-15T00:00:00Z&to=2026-08-16T00:00:00Z&afterSequence=0&limit=2
+```
+
+Send the request, then copy `nextAfterSequence` from the response into the next request's `afterSequence`. Continue while `hasMore` is `true`. For incremental synchronization, persist that cursor and poll again later with the same filters. An empty page deliberately returns the input cursor unchanged.
+
+Pagination rules:
+
+- `afterSequence` defaults to `0` and must be non-negative.
+- `limit` defaults to `50` and must be between `1` and `200`.
+- The service reads one extra row to calculate `hasMore` without running a separate count query.
+- Archived rows are excluded from normal queries so the contract remains compatible with the later retention milestone.
+
+Useful Bruno validation checks are `limit=201`, `afterSequence=-1`, a blank string filter, and a `from` instant equal to or later than `to`; each must return HTTP 400.
 
 ## Optional PostgreSQL setup
 

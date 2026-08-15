@@ -25,3 +25,11 @@ This log records material AI assistance and the engineer's decision for traceabi
 - Engineer decision: Reviewed and explicitly approved for commit and push on 2026-08-15.
 - Modifications after validation: Made `CHAR(64)` explicit in JPA after Hibernate schema validation correctly found a mismatch with Flyway's fixed-width hash columns. Replaced deprecated Jackson 3 `asText()` test calls with `asString()`.
 - Validation: Six tests pass, including a golden hash vector, invalid-input HTTP response, caller/server timestamp paths, linked appends, and eight simultaneous writers. JaCoCo line and branch gates pass.
+
+## 2026-08-15 - Milestone 3 query and incremental synchronization
+
+- Intent: Implement assignment-required filtered reads and stable pagination without beginning chain verification or Scenario B work.
+- AI contribution: Proposed and implemented composable JPA Specifications, half-open time filtering, sequence-based keyset pagination, reusable event responses, read-only transactions, request constraints, Problem Details responses, and Bruno test guidance.
+- Engineer decision: Reviewed and explicitly approved for commit and push on 2026-08-15.
+- Modifications after validation: Assigned the query integration test a dedicated in-memory H2 URL after Spring's test-context cache exposed cross-class fixture coupling. Added explicit handling for method-level `ConstraintViolationException` so invalid pagination parameters return HTTP 400 instead of 500.
+- Validation: Eight tests pass, including combined/exact filters, time bounds, multi-page cursor traversal, empty incremental polling, and invalid query inputs. JaCoCo line and branch gates pass.

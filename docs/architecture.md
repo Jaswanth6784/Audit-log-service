@@ -34,6 +34,12 @@ Hash version 1 stores:
 
 Canonical event JSON contains only the assignment event fields: actor ID, event type, resource type, resource ID, payload, and event timestamp. Object keys are sorted recursively, array order is preserved, UTF-8 is used, and the exact algorithm is protected by golden-vector tests.
 
+## Query path
+
+The read API composes optional exact-match and time-range predicates through JPA Specifications. It returns only non-archived events, ordered by the immutable global sequence. Keyset pagination uses `sequence_number > afterSequence` rather than database offsets, preventing duplicate or skipped positions when new events are appended between requests and allowing the same cursor to drive incremental synchronization.
+
+Each query requests `limit + 1` rows. The extra row establishes `hasMore` without a potentially expensive `COUNT(*)`; only the requested page is returned. `nextAfterSequence` is the last returned sequence, or the input cursor for an empty page. Event time uses a half-open interval (`from` inclusive, `to` exclusive), which makes adjacent windows composable without overlap.
+
 ## Database profiles
 
 H2 in PostgreSQL compatibility mode is the default for rapid local development. PostgreSQL is the intended production database. Flyway is the only schema owner; Hibernate validates rather than creates schema. PostgreSQL-specific locking and type behavior must be tested with Testcontainers before production claims are made.
