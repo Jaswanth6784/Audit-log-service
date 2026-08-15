@@ -10,6 +10,7 @@ public final class AuditAuthority {
     public static final String RETENTION_ADMIN = "AUDIT_RETENTION_ADMIN";
     public static final String MONITOR = "AUDIT_MONITOR";
     public static final String COMPLIANCE_ACCESS_WRITE = "COMPLIANCE_ACCESS_WRITE";
+    public static final String COMPLIANCE_REPORT_READ = "COMPLIANCE_REPORT_READ";
 
     private AuditAuthority() {
     }

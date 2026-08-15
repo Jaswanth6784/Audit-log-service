@@ -93,19 +93,19 @@ The hash chain protects the event fields, and version-2 leaf commitments allow l
 
 1. A registered source or gateway submits a typed access event after its authorization decision to the implemented `POST /compliance/access-events` endpoint.
 2. Security derives actor and source identity from credentials; the application validates controlled codes and appends the canonical event. Local H2 uses the authenticated username and fixed `LOCAL_H2_DEMO` source, while PostgreSQL JWT mode requires `client_id` for the source.
-3. An authorized compliance user requests a bounded report using account or actor scope and a UTC time range.
-4. The query reuses global sequence keyset pagination and returns a compliance-specific projection that excludes proof salts and raw payload details not required by the report.
-5. A report-view receipt is appended with criteria fingerprint, consumer principal, result boundary, and purpose, but not returned data.
+3. An authorized compliance user requests a bounded report using the implemented `GET /compliance/access-reports` endpoint with account or actor scope and a UTC time range.
+4. The query reuses global sequence keyset pagination, captures an explicit chain boundary, and returns a compliance-specific projection that excludes proof salts and raw payload details not required by the report.
+5. A report-view receipt is appended with criteria fingerprint, consumer principal, result boundary, and pagination outcome, but not the raw scope or returned data.
 6. Large or externally delivered evidence uses the signed export mechanism with a compliance manifest binding report criteria to the captured head.
 
-The ingestion API is `POST /compliance/access-events`. Candidate later API names are `GET /compliance/access-reports` and an asynchronous export job resource; report names and synchronous limits remain subject to API review. The assignment-required chain endpoint is exposed as `GET /audit/verify`; the existing `/audit/verification` path remains as a compatibility alias.
+The implemented APIs are `POST /compliance/access-events` and `GET /compliance/access-reports`. An asynchronous compliance export job resource remains a candidate later API. The assignment-required chain endpoint is exposed as `GET /audit/verify`; the existing `/audit/verification` path remains as a compatibility alias.
 
 ### Authorization model
 
 The design separates these authorities:
 
 - `COMPLIANCE_ACCESS_WRITE`: registered typed access-event ingestion.
-- `COMPLIANCE_REPORT_READ`: bounded internal reports.
+- `COMPLIANCE_REPORT_READ`: implemented bounded internal reports.
 - `COMPLIANCE_REPORT_EXPORT`: signed evidence generation/download.
 - `AUDIT_VERIFY`: chain or bundle verification.
 - `AUDIT_PRIVACY_ADMIN`: redaction.
@@ -122,24 +122,26 @@ Hash chaining answers: “Were accepted events altered or removed relative to th
 | Capability | Current status | Boundary |
 | --- | --- | --- |
 | Append typed access events | Implemented through `POST /compliance/access-events` | Controlled prototype taxonomy; delegation and source registration are not yet modeled |
-| Filter by actor/account/type/time | Implemented through `GET /audit/events` | Generic response exposes more audit detail than a minimized compliance projection |
-| Stable incremental reads | Implemented for generic audit queries with sequence keyset pagination and reader authorization | Compliance-specific report criteria and projection are not implemented |
+| Filter by actor/account/type/time | Implemented through minimized `GET /compliance/access-reports` | Exactly one primary scope and both time bounds are mandatory |
+| Controlled report filters | Implemented for action, outcome, source, and data category | Portable payload scan is capped at 10,000 candidates; indexed fields await volume evidence |
+| Stable incremental reads | Implemented with captured chain boundary and sequence keyset pagination | A later request captures a new boundary; clients must retain each response cursor |
 | Tamper verification | Implemented at `/audit/verify` with `/audit/verification` as an alias | Full verification remains O(n) |
 | Retention and archived verification | Implemented | Retention duration lacks Compliance approval |
 | Structured redaction | Implemented with salted commitments | Identifier-redaction policy is unresolved |
 | Actor/account signed export | Implemented with exporter/verifier authorization | Compliance-specific criteria manifest is not implemented |
-| Endpoint identity and role separation | Implemented with dedicated `COMPLIANCE_ACCESS_WRITE`, local Basic, and production-profile JWT modes | H2 source is a fixed demo value; generic audit `actorId` remains caller supplied |
+| Report access receipts | Implemented with authenticated consumer, criteria fingerprint, and result boundary | Receipt excludes raw scope and returned client metadata; direct regulator delivery is deferred |
+| Endpoint identity and role separation | Implemented with dedicated write/report authorities, local Basic, and production-profile JWT modes | H2 source is a fixed demo value; generic audit `actorId` remains caller supplied |
 | Source delivery completeness | Deferred | Requires integration with source systems and operational reconciliation |
 | Direct regulator portal/submission | Out of scope | Internal authorized report production is the provisional workflow |
 
-Milestone 10 implements the typed/minimized ingestion slice after the Milestone 8 clarification and Milestone 9 security boundary. Bounded compliance reports, report-access receipts, signed compliance manifests, source delivery completeness, and direct regulator workflows remain deferred.
+Milestones 10 and 11 implement typed ingestion plus bounded, minimized internal reports after the Milestone 8 clarification and Milestone 9 security boundary. Signed compliance manifests, asynchronous delivery, source completeness, and direct regulator workflows remain deferred.
 
 ## Validation strategy
 
 - Implemented ingestion contract tests cover controlled values, rejected unknown/raw fields, category normalization, and minimized persisted payloads.
 - Implemented security tests cover unauthenticated, wrong-role, local principal attribution, and JWT source-claim resolution. Delegation remains deferred.
-- Repository/integration tests for combined filters, archived rows, pagination, and concurrent appends.
-- End-to-end tests proving report-view receipts do not leak returned data.
+- Implemented integration tests cover combined filters, half-open time ranges, pagination, captured boundaries, and archived-row exclusion inherited from the base query. Dedicated concurrent-append testing remains future hardening.
+- Implemented end-to-end tests prove report-view receipts exclude raw account/actor scopes and returned data.
 - Signed-export tests binding criteria, watermark/head, counts, and records.
 - Tampering tests for event content, chain links, report criteria, and signatures.
 - Load tests using expected source volume and report windows before setting operational limits or indexes.

@@ -92,3 +92,12 @@ This log records material AI assistance and the engineer's decision for traceabi
 - Engineer decision: Reviewed and explicitly approved for commit and push on 2026-08-15.
 - Design boundary: Event and resource types are server fixed. The H2 source identity is a local fixture; PostgreSQL derives it from JWT `client_id`. Delegation, correlation-ID idempotency, source registration/reconciliation, bounded reports, report-view receipts, and compliance-specific export manifests remain deferred.
 - Validation: Focused real-HTTP tests cover 401, 403, successful writer ingestion, identity derivation, controlled normalization, spoofed/unknown-field rejection, unsupported enum rejection, minimized persistence, and valid chain verification after append. The full Maven build passes with 33 tests, 94.88% line coverage, and 78.45% branch coverage.
+
+## 2026-08-15 - Milestone 11 bounded compliance reporting
+
+- Intent: Provide authorized internal compliance users with bounded, minimized access-evidence pages while auditing report access itself.
+- AI contribution: Proposed and implemented exact account-or-actor scope, mandatory half-open time bounds, controlled filters, captured sequence boundaries, repeatable-read keyset queries, bounded portable payload scanning, minimized projections, privacy-preserving criteria fingerprints, atomic report-view receipts, authorization, Swagger/Bruno guidance, tests, and an ADR.
+- Engineer decision: Reviewed and explicitly approved for commit and push on 2026-08-15.
+- Modification after validation: SQL trace review found that managed JSON-backed report entities were dirty-checked when the receipt was appended. The read snapshot is now detached before the write, preventing update statements against immutable evidence.
+- Design boundary: Candidate scans are capped at 10,000 until measured volume justifies promoted columns or PostgreSQL JSON indexes. Signed compliance manifests, asynchronous delivery, direct regulator access, and source-completeness controls remain deferred.
+- Validation: Focused tests cover authorization, invalid scopes/ranges, mandatory purpose, account and actor reports, optional filters, half-open time behavior, keyset pagination, captured boundaries, minimized responses, receipt privacy, and valid chain verification after report access. The full Maven build passes with 36 tests, 94.58% line coverage, and 78.36% branch coverage.

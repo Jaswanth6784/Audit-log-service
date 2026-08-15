@@ -1,7 +1,9 @@
 package com.jaswanth.auditlog.shared.error;
 
 import com.jaswanth.auditlog.audit.application.InvalidAuditQueryException;
+import com.jaswanth.auditlog.compliance.application.ComplianceReportScanLimitException;
 import com.jaswanth.auditlog.compliance.application.InvalidComplianceIdentityException;
+import com.jaswanth.auditlog.compliance.application.InvalidComplianceReportQueryException;
 import com.jaswanth.auditlog.export.application.ExportTooLargeException;
 import com.jaswanth.auditlog.export.application.InvalidExportScopeException;
 import com.jaswanth.auditlog.redaction.application.AuditEventNotFoundException;
@@ -41,6 +43,20 @@ public class ApiExceptionHandler {
     ProblemDetail handleInvalidComplianceIdentity(InvalidComplianceIdentityException exception) {
         var problem = ProblemDetail.forStatusAndDetail(HttpStatus.FORBIDDEN, exception.getMessage());
         problem.setTitle("Compliance identity is not trusted");
+        return problem;
+    }
+
+    @ExceptionHandler(InvalidComplianceReportQueryException.class)
+    ProblemDetail handleInvalidComplianceReportQuery(InvalidComplianceReportQueryException exception) {
+        var problem = ProblemDetail.forStatusAndDetail(HttpStatus.BAD_REQUEST, exception.getMessage());
+        problem.setTitle("Invalid compliance report query");
+        return problem;
+    }
+
+    @ExceptionHandler(ComplianceReportScanLimitException.class)
+    ProblemDetail handleComplianceReportScanLimit(ComplianceReportScanLimitException exception) {
+        var problem = ProblemDetail.forStatusAndDetail(HttpStatus.CONTENT_TOO_LARGE, exception.getMessage());
+        problem.setTitle("Compliance report scan is too large");
         return problem;
     }
 

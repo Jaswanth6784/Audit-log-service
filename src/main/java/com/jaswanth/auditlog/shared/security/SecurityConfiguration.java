@@ -34,6 +34,8 @@ public class SecurityConfiguration {
                         .hasAuthority(AuditAuthority.PRIVACY_ADMIN)
                         .requestMatchers(HttpMethod.POST, "/compliance/access-events")
                         .hasAuthority(AuditAuthority.COMPLIANCE_ACCESS_WRITE)
+                        .requestMatchers(HttpMethod.GET, "/compliance/access-reports")
+                        .hasAuthority(AuditAuthority.COMPLIANCE_REPORT_READ)
                         .requestMatchers(HttpMethod.POST, "/audit/events")
                         .hasAuthority(AuditAuthority.WRITE)
                         .requestMatchers(HttpMethod.GET, "/audit/events")

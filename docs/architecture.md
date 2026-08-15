@@ -30,7 +30,15 @@ The service is a modular monolith organized by feature. Each feature separates H
 
 The request accepts only enumerated action, outcome, data category, purpose, and reason values plus an opaque account ID, correlation UUID, and optional occurrence time. Unknown JSON properties fail deserialization. The application fixes `eventType` to `CLIENT_ACCOUNT_DATA_ACCESS` and `resourceType` to `CLIENT_ACCOUNT`, de-duplicates and sorts category codes, builds a minimized structured payload, then delegates to the same locked hash-chain append transaction used by generic events. This reuses integrity machinery without allowing a source to control the audit envelope or inject raw client data.
 
-The current correlation ID is evidence, not an idempotency constraint. Production source integration must define retry semantics and source-scoped uniqueness before claiming exactly-once acceptance. Delegated/effective actor representation and the bounded compliance-report API remain separate reviewed changes.
+The current correlation ID is evidence, not an idempotency constraint. Production source integration must define retry semantics and source-scoped uniqueness before claiming exactly-once acceptance. Delegated/effective actor representation remains a separate reviewed change.
+
+## Compliance reporting path
+
+`GET /compliance/access-reports` requires `COMPLIANCE_REPORT_READ`, exactly one account-or-actor scope, a controlled report purpose, and a finite half-open occurrence-time range. Action, outcome, source, and data-category filters are controlled values. Base scope/time/type predicates execute in the database; portable payload filters execute while scanning bounded sequence-ordered candidates. A 10,000-candidate ceiling prevents an unbounded application scan until measured workloads justify promoted columns or database-specific JSON indexes.
+
+The transaction uses repeatable-read isolation and captures the global chain-head sequence before querying. Every candidate predicate includes that upper boundary, making the page snapshot explicit. Results expose the controlled access fields, redaction state, event ID, sequence, predecessor hash, and record hash, but not generic payload maps, content hashes, commitment proofs, or salts.
+
+After constructing the detached read snapshot, the same transaction appends a `COMPLIANCE_ACCESS_REPORT_VIEWED` receipt. Detaching is essential because Hibernate otherwise dirty-checks mutable JSON maps during the later write and can issue updates against read evidence. The receipt binds a domain-separated SHA-256 criteria fingerprint, controlled report purpose, scope type, consumer identity, captured boundary, request cursor/limit, returned range, and continuation outcome without copying the raw scope or returned metadata.
 
 ## Append transaction
 

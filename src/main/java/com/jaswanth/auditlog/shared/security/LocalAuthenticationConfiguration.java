@@ -34,7 +34,8 @@ public class LocalAuthenticationConfiguration {
                         AuditAuthority.PRIVACY_ADMIN,
                         AuditAuthority.RETENTION_ADMIN,
                         AuditAuthority.MONITOR,
-                        AuditAuthority.COMPLIANCE_ACCESS_WRITE)
+                        AuditAuthority.COMPLIANCE_ACCESS_WRITE,
+                        AuditAuthority.COMPLIANCE_REPORT_READ)
                 .build();
         var writer = User.builder()
                 .username("audit-writer")
@@ -44,7 +45,7 @@ public class LocalAuthenticationConfiguration {
         var reader = User.builder()
                 .username("audit-reader")
                 .password(passwordEncoder.encode(properties.readerPassword()))
-                .authorities(AuditAuthority.READ, AuditAuthority.VERIFY)
+                .authorities(AuditAuthority.READ, AuditAuthority.VERIFY, AuditAuthority.COMPLIANCE_REPORT_READ)
                 .build();
         return new InMemoryUserDetailsManager(admin, writer, reader);
     }

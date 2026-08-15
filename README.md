@@ -4,7 +4,7 @@ Production-oriented prototype of an append-only, tamper-evident audit log servic
 
 ## Current milestone
 
-Milestone 10 adds typed ingestion of client-account-data access evidence. The endpoint derives actor and source identity from authentication, accepts only controlled compliance fields, rejects arbitrary payloads and identity overrides, and appends normalized evidence through the existing tamper-evident chain. Compliance report retrieval remains the next reviewed implementation slice.
+Milestone 11 adds bounded internal compliance reports with account-or-actor scope, mandatory half-open time ranges, controlled optional filters, stable sequence cursors, minimized projections, captured chain boundaries, and privacy-minimized report-access receipts.
 
 ## Prerequisites
 
@@ -50,6 +50,7 @@ The authorization matrix is:
 | --- | --- |
 | Append events | `AUDIT_WRITER` |
 | Append typed compliance access events | `COMPLIANCE_ACCESS_WRITE` |
+| Read bounded compliance access reports | `COMPLIANCE_REPORT_READ` |
 | Query events and view API documentation | `AUDIT_READER` |
 | Verify chains or export bundles | `AUDIT_VERIFIER` |
 | Create signed exports | `AUDIT_EXPORTER` |
@@ -117,6 +118,30 @@ Bruno checks worth demonstrating:
 - `GET /audit/verify` with reader credentials remains valid after ingestion.
 
 `correlationId` is recorded but is not yet a database uniqueness key. A source retry can therefore create another valid event; production delivery needs an agreed idempotency key and source-scoped uniqueness policy.
+
+## Query a compliance access report
+
+In Bruno, create a GET request and use `audit-reader` / `audit-reader-dev-only` with Basic Auth. Exactly one of `accountId` or `actorId` is required, and both `from` and `to` are mandatory:
+
+```text
+http://localhost:8080/compliance/access-reports?accountId=account-123&from=2026-08-15T00:00:00Z&to=2026-08-16T00:00:00Z&reportPurpose=REGULATORY&afterSequence=0&limit=50
+```
+
+`from` is inclusive and `to` is exclusive. `reportPurpose` is mandatory and uses the same controlled purpose taxonomy as ingestion. Optional controlled filters are `action`, `outcome`, `sourceSystem`, and `dataCategory`. Pagination uses the immutable global sequence: send the response's `nextAfterSequence` in the next request while `hasMore` is `true`.
+
+Each page captures `capturedThroughSequence` before querying, so later concurrent appends cannot drift into that page. The response exposes compliance fields and the minimum chain references needed to locate and verify evidence; it excludes the generic payload object, commitment proofs, salts, and content hash.
+
+Every successful page appends a `COMPLIANCE_ACCESS_REPORT_VIEWED` receipt. The receipt records the authenticated consumer, criteria fingerprint, scope type, captured boundary, cursor, limit, returned sequence range, and page outcome. It deliberately excludes the raw account or actor scope and returned client metadata. The response's `accessReceiptEventId` links the page to this receipt.
+
+Candidate scanning is capped at 10,000 events per page because optional compliance fields currently live in portable JSON payloads rather than speculative database-specific indexes. HTTP 413 asks the caller to narrow the time range. Production volume measurements can justify promoted columns or PostgreSQL JSON indexes later.
+
+Useful Bruno checks:
+
+- omit both scopes or supply both scopes: HTTP 400;
+- omit either time bound or `reportPurpose`, or use `from >= to`: HTTP 400;
+- use writer credentials: HTTP 403;
+- set `to` equal to an event timestamp to demonstrate the exclusive upper bound;
+- verify `/audit/verify` remains valid after report receipts are appended.
 
 ## Query audit events
 
@@ -264,6 +289,10 @@ The build runs JUnit 5 tests and fails below 85% line coverage or 75% branch cov
 - Why derive `sourceSystem` from JWT `client_id`? A request body is attacker-controlled; a validated credential claim binds the emitting workload identity to the accepted evidence.
 - Why normalize category ordering? Semantically equivalent requests should produce one deterministic payload representation before commitment and hashing.
 - Does hash chaining prove every access was recorded? No. It proves integrity of accepted events. Completeness also requires atomic source capture, idempotent delivery, monitoring, and reconciliation.
+- Why capture a chain boundary? It makes the page's evidence horizon explicit and prevents concurrent appends from changing the logical snapshot during pagination.
+- Why audit report reads? Compliance metadata is sensitive; recording who viewed which criteria and result boundary provides oversight without duplicating returned data.
+- Why fingerprint the raw scope in the receipt? It binds the receipt to known criteria while avoiding direct disclosure of an account or investigated actor in administrative evidence.
+- Why cap the candidate scan? Portable in-memory filtering is acceptable only when bounded; the cap fails safely until measured volume justifies indexed promoted fields.
 - Why is CSRF disabled? The production API accepts bearer tokens rather than browser cookies. The local Basic mode is development-only; introducing session/cookie authentication requires enabling an appropriate CSRF strategy.
 
 ## Documentation

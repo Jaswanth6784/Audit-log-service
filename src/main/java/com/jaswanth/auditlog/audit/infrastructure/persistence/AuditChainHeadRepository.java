@@ -13,4 +13,7 @@ public interface AuditChainHeadRepository extends JpaRepository<AuditChainHeadEn
     @Lock(LockModeType.PESSIMISTIC_WRITE)
     @Query("select head from AuditChainHeadEntity head where head.chainId = :chainId")
     Optional<AuditChainHeadEntity> findByChainIdForUpdate(@Param("chainId") short chainId);
+
+    @Query("select head.lastSequence from AuditChainHeadEntity head where head.chainId = :chainId")
+    Optional<Long> findLastSequenceByChainId(@Param("chainId") short chainId);
 }
