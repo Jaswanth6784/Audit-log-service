@@ -25,6 +25,8 @@ Build a reviewable, production-oriented prototype that records append-only audit
 - Clarify what constitutes client account data access.
 - Identify actors, access actions, report consumers, scope, timeliness, retention, and evidence expectations.
 - Document assumptions and scope boundaries before implementation.
+- Work from the normalized requirement and acceptance criteria in [Scenario C: Compliance Reporting](scenario-c-compliance-reporting.md).
+- Treat the current audit APIs as a partial implementation: they can store, filter, verify, retain, redact, and export access-shaped events, but authenticated attribution, controlled access-event schema, minimized reporting, authorization, and source completeness remain explicit boundaries.
 
 ## Cross-cutting constraints
 

@@ -66,3 +66,12 @@ This log records material AI assistance and the engineer's decision for traceabi
 - Engineer decision: Reviewed and explicitly approved for commit and push on 2026-08-15.
 - Design boundary: Bundles prove the complete global chain from genesis to the captured head and are therefore O(n). The embedded public key is not self-authenticating. The H2 key is intentionally public development material; PostgreSQL requires external key configuration.
 - Validation: API coverage confirms scoped disclosure and bridge placement. Signed-tampering tests cover signatures, payload proofs, content, scope, sequence, predecessor links, record hashes, counts, kinds, and chain heads. The full Maven coverage gate passes.
+
+## 2026-08-15 - Milestone 8 compliance-reporting clarification
+
+- Intent: Clarify the intentionally ambiguous regulator-access statement before writing reporting code and define a defensible partial-implementation boundary.
+- AI contribution: Rechecked the source assignment; proposed stakeholders, clarification questions, provisional assumptions, terminology, a normalized requirement, acceptance criteria, evidence schema, API flow, authorization roles, completeness boundary, risks, validation strategy, and an ADR.
+- Engineer decision: Reviewed and explicitly approved for commit and push on 2026-08-15.
+- Accepted direction: Reuse the existing audit chain as the evidence source instead of creating a second reporting ledger; distinguish integrity of accepted records from completeness of source-system emission.
+- Scoped out: Runtime changes, authentication, source connectors, direct regulator access, scheduled delivery, jurisdiction-specific retention, and unmeasured database indexes.
+- Validation: The documentation covers clarification, ambiguities, assumptions, normalized requirements, technical design, and implemented/deferred scope. Local Markdown targets resolve, Maven verification passes with 28 tests, and the existing JaCoCo gates remain above threshold.

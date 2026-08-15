@@ -4,7 +4,7 @@ Production-oriented prototype of an append-only, tamper-evident audit log servic
 
 ## Current milestone
 
-Milestone 7 adds signed, actor- or resource-scoped verifiable exports to immutable event append, filtered sequence-ordered reads, complete hash-chain verification, configurable soft-archive retention, and commitment-based payload redaction. Security remains a separate reviewed milestone.
+Milestone 8 clarifies the assignment's intentionally ambiguous compliance-reporting scenario and defines a concrete design and partial-implementation boundary. Runtime capabilities remain those completed through Milestone 7: append, filtered reads, verification, retention, redaction, and signed scoped exports.
 
 ## Prerequisites
 
@@ -192,5 +192,6 @@ The build runs JUnit 5 tests and fails below 85% line coverage or 75% branch cov
 
 - [Requirements](docs/requirements.md)
 - [Architecture](docs/architecture.md)
+- [Scenario C compliance reporting](docs/scenario-c-compliance-reporting.md)
 - [AI usage log](docs/ai-usage-log.md)
 - [Architecture decisions](docs/decisions/)

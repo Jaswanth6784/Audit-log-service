@@ -69,6 +69,12 @@ The service signs a recursively key-sorted canonical JSON manifest with Ed25519.
 
 The current synchronous bundle contains a proof from genesis through the captured head and is therefore O(n) in the global chain size. A configurable limit fails with HTTP 413 before scanning oversized chains. Production-scale generation should be asynchronous and streamed to protected object storage; externally anchored checkpoints or a Merkle-based structure are future alternatives if proof size becomes a primary requirement.
 
+## Compliance reporting design
+
+Scenario C is clarified in [Scenario C: Compliance Reporting](scenario-c-compliance-reporting.md). The design models client-account data access as a controlled profile of the existing audit event rather than maintaining a second ledger. Compliance reports are minimized projections over that source of truth, scoped by actor or account and a bounded UTC interval, with signed evidence for external verification.
+
+The integrity boundary is deliberate: the chain proves accepted records were not altered relative to the captured head. It cannot prove every source system emitted every required event. Production completeness requires registered-source inventory, atomic source capture, durable idempotent delivery, monitoring, and reconciliation. Authenticated principal attribution and role-separated report access are also prerequisites before the prototype can make compliance-grade claims.
+
 ## Database profiles
 
 H2 in PostgreSQL compatibility mode is the default for rapid local development. PostgreSQL is the intended production database. Flyway is the only schema owner; Hibernate validates rather than creates schema. PostgreSQL-specific locking and type behavior must be tested with Testcontainers before production claims are made.
