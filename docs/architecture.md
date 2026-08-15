@@ -22,6 +22,18 @@ The service is a modular monolith organized by feature. Each feature separates H
 5. Query paths return immutable projections using keyset pagination.
 6. Verification recomputes hashes in sequence order and stops at the first inconsistency.
 
+## Append transaction
+
+The service maintains one global chain-head row. Each append transaction obtains a pessimistic write lock on that row, normalizes timestamps to microseconds, canonicalizes the payload, calculates the hashes, inserts the immutable event, and advances the head. An optimistic version column provides an additional stale-write guard. Any failure rolls back both changes.
+
+Hash version 1 stores:
+
+- `content_hash = SHA-256(canonical event JSON)`
+- `previous_hash = preceding record_hash`, or 64 zeroes for genesis
+- `record_hash = SHA-256("audit-record-v1" + newline + previous_hash + newline + content_hash)`
+
+Canonical event JSON contains only the assignment event fields: actor ID, event type, resource type, resource ID, payload, and event timestamp. Object keys are sorted recursively, array order is preserved, UTF-8 is used, and the exact algorithm is protected by golden-vector tests.
+
 ## Database profiles
 
 H2 in PostgreSQL compatibility mode is the default for rapid local development. PostgreSQL is the intended production database. Flyway is the only schema owner; Hibernate validates rather than creates schema. PostgreSQL-specific locking and type behavior must be tested with Testcontainers before production claims are made.

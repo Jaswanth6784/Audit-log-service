@@ -32,6 +32,25 @@ Useful endpoints:
 - Swagger UI: `http://localhost:8080/swagger-ui.html`
 - OpenAPI JSON: `http://localhost:8080/api-docs`
 
+## Append an audit event
+
+`POST /audit/events` is the only audit-data mutation endpoint currently exposed. There are deliberately no update or delete operations.
+
+```bash
+curl --request POST http://localhost:8080/audit/events \
+  --header "Content-Type: application/json" \
+  --data '{
+    "eventType": "RECORD_UPDATED",
+    "actorId": "user-123",
+    "resourceType": "ACCOUNT",
+    "resourceId": "account-456",
+    "payload": {"field": "mailingAddress"},
+    "timestamp": "2026-08-15T10:15:30.123456Z"
+  }'
+```
+
+`timestamp` is optional. When omitted, the server assigns the current UTC time. The service always adds a separate server-controlled `recordedAt` value. Both values are normalized to microsecond precision before hashing so H2 and PostgreSQL round-trips remain consistent.
+
 ## Optional PostgreSQL setup
 
 PostgreSQL is configured but is not the default database during the current milestone.
