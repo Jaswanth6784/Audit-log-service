@@ -85,4 +85,10 @@ Actuator exposes health, readiness/liveness probes, application information, and
 
 ## Security posture
 
-The H2 profile contains a known public demonstration signing key. The PostgreSQL profile requires external Ed25519 key material and fails fast when it is absent. Production should place signing behind a KMS/HSM or secrets-managed signer, distribute trust roots independently, support key rotation by key ID, authorize export creation separately from verification, and record export access without logging exported payloads.
+All routes are governed by one stateless, fail-closed authorization matrix. Health and application-info probes are public; append, read, verify, export, redaction, retention, documentation, and metrics operations require separate authorities. Security failures return Problem Details JSON with HTTP 401 for missing/invalid authentication and HTTP 403 for insufficient authority.
+
+The H2 profile uses encoded in-memory HTTP Basic users with known development-only passwords. The PostgreSQL profile is an OAuth2 resource server: JWT signature, issuer, lifetime, and audience are validated using externally configured issuer/JWK metadata, and the explicit `roles` claim maps to audit authorities without an implicit prefix. Supplying both issuer and JWK Set locations avoids authorization-server discovery at startup while retaining issuer checks.
+
+CSRF is disabled because the production API is stateless and bearer-token authenticated; cookie or session authentication would require a new CSRF decision. Deployed traffic requires TLS. Endpoint authentication does not by itself make the generic event's caller-supplied `actorId` an authenticated subject; the compliance ingestion design must bind source principal, initiating actor, and effective/delegated actor explicitly.
+
+The H2 profile also contains a known public demonstration signing key. PostgreSQL requires external Ed25519 key material and fails fast when it is absent. Production should place signing behind a KMS/HSM or secrets-managed signer, distribute trust roots independently, support key rotation by key ID, and record export access without logging exported payloads.

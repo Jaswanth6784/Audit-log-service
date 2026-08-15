@@ -98,7 +98,7 @@ The hash chain protects the event fields, and version-2 leaf commitments allow l
 5. A report-view receipt is appended with criteria fingerprint, consumer principal, result boundary, and purpose, but not returned data.
 6. Large or externally delivered evidence uses the signed export mechanism with a compliance manifest binding report criteria to the captured head.
 
-Candidate API names for the later implementation are `POST /compliance/access-events`, `GET /compliance/access-reports`, and an asynchronous export job resource. Names and synchronous limits remain subject to API review. The assignment-required chain endpoint will also be exposed as `GET /audit/verify`; the existing `/audit/verification` path can remain as a compatibility alias.
+Candidate API names for the later implementation are `POST /compliance/access-events`, `GET /compliance/access-reports`, and an asynchronous export job resource. Names and synchronous limits remain subject to API review. The assignment-required chain endpoint is exposed as `GET /audit/verify`; the existing `/audit/verification` path remains as a compatibility alias.
 
 ### Authorization model
 
@@ -124,11 +124,11 @@ Hash chaining answers: “Were accepted events altered or removed relative to th
 | Append access-shaped events | Partially implemented through generic `POST /audit/events` | No controlled schema or authenticated identity yet |
 | Filter by actor/account/type/time | Implemented through `GET /audit/events` | Generic response exposes more audit detail than a minimized compliance projection |
 | Stable incremental reads | Implemented with sequence keyset pagination | Consumer authorization is not implemented |
-| Tamper verification | Implemented at `/audit/verification` | Assignment path `/audit/verify` still needs an alias |
+| Tamper verification | Implemented at `/audit/verify` with `/audit/verification` as an alias | Full verification remains O(n) |
 | Retention and archived verification | Implemented | Retention duration lacks Compliance approval |
 | Structured redaction | Implemented with salted commitments | Identifier-redaction policy is unresolved |
 | Actor/account signed export | Implemented | Export authorization and compliance-specific criteria manifest are not implemented |
-| Identity and role separation | Deferred | Required before compliance-grade claims |
+| Endpoint identity and role separation | Implemented with local Basic and production-profile JWT modes | Generic `actorId` attribution is still caller supplied; typed compliance ingestion must bind source and subject identities |
 | Source delivery completeness | Deferred | Requires integration with source systems and operational reconciliation |
 | Direct regulator portal/submission | Out of scope | Internal authorized report production is the provisional workflow |
 

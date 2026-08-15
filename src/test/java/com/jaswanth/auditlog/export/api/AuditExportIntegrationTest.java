@@ -12,6 +12,7 @@ import com.jaswanth.auditlog.export.model.AuditExportRecord;
 import com.jaswanth.auditlog.export.model.AuditExportSignature;
 import com.jaswanth.auditlog.export.model.ExportChainHead;
 import com.jaswanth.auditlog.export.model.ExportScopeDescriptor;
+import com.jaswanth.auditlog.support.TestCredentials;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -200,7 +201,9 @@ class AuditExportIntegrationTest {
     private HttpResponse<String> get(String path) throws Exception {
         return httpClient.send(
                 HttpRequest.newBuilder(URI.create("http://localhost:" + port + path))
-                        .timeout(Duration.ofSeconds(10)).GET().build(),
+                        .timeout(Duration.ofSeconds(10))
+                        .header("Authorization", TestCredentials.ADMIN)
+                        .GET().build(),
                 HttpResponse.BodyHandlers.ofString());
     }
 
@@ -209,6 +212,7 @@ class AuditExportIntegrationTest {
                 HttpRequest.newBuilder(URI.create("http://localhost:" + port + path))
                         .timeout(Duration.ofSeconds(10))
                         .header("Content-Type", "application/json")
+                        .header("Authorization", TestCredentials.ADMIN)
                         .POST(HttpRequest.BodyPublishers.ofString(body)).build(),
                 HttpResponse.BodyHandlers.ofString());
     }

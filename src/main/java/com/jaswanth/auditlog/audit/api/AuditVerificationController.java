@@ -9,7 +9,7 @@ import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 
 @RestController
-@RequestMapping("/audit/verification")
+@RequestMapping({"/audit/verify", "/audit/verification"})
 @Tag(name = "Audit verification")
 public class AuditVerificationController {
 

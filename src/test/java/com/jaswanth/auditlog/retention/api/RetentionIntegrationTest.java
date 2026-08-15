@@ -2,6 +2,7 @@ package com.jaswanth.auditlog.retention.api;
 
 import com.jaswanth.auditlog.audit.application.AppendAuditEventCommand;
 import com.jaswanth.auditlog.audit.application.AppendAuditEventService;
+import com.jaswanth.auditlog.support.TestCredentials;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
@@ -99,8 +100,9 @@ class RetentionIntegrationTest {
 
     private JsonNode postRetention(HttpClient httpClient) throws Exception {
         var request = HttpRequest.newBuilder(URI.create(
-                        "http://localhost:" + port + "/audit/retention/runs"))
+                "http://localhost:" + port + "/audit/retention/runs"))
                 .timeout(Duration.ofSeconds(10))
+                .header("Authorization", TestCredentials.ADMIN)
                 .POST(HttpRequest.BodyPublishers.noBody())
                 .build();
         return send(httpClient, request);
@@ -109,6 +111,7 @@ class RetentionIntegrationTest {
     private JsonNode get(HttpClient httpClient, String path) throws Exception {
         var request = HttpRequest.newBuilder(URI.create("http://localhost:" + port + path))
                 .timeout(Duration.ofSeconds(10))
+                .header("Authorization", TestCredentials.ADMIN)
                 .GET()
                 .build();
         return send(httpClient, request);

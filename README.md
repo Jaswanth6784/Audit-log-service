@@ -4,7 +4,7 @@ Production-oriented prototype of an append-only, tamper-evident audit log servic
 
 ## Current milestone
 
-Milestone 8 clarifies the assignment's intentionally ambiguous compliance-reporting scenario and defines a concrete design and partial-implementation boundary. Runtime capabilities remain those completed through Milestone 7: append, filtered reads, verification, retention, redaction, and signed scoped exports.
+Milestone 9 adds role-separated API security, development Basic authentication, production-profile JWT validation, JSON 401/403 responses, protected monitoring, Swagger security schemes, and the assignment-compatible `/audit/verify` endpoint. Typed compliance reporting remains the next reviewed implementation slice.
 
 ## Prerequisites
 
@@ -28,9 +28,35 @@ Windows PowerShell:
 Useful endpoints:
 
 - Health: `http://localhost:8080/actuator/health`
-- Prometheus metrics: `http://localhost:8080/actuator/prometheus`
+- Prometheus metrics (monitor authority required): `http://localhost:8080/actuator/prometheus`
 - Swagger UI: `http://localhost:8080/swagger-ui.html`
 - OpenAPI JSON: `http://localhost:8080/api-docs`
+
+## H2 development authentication
+
+The H2 profile uses three in-memory HTTP Basic users. These credentials are public development fixtures and must never be used outside local H2 execution.
+
+| Username | Password | Authorities |
+| --- | --- | --- |
+| `audit-admin` | `audit-admin-dev-only` | All audit authorities |
+| `audit-writer` | `audit-writer-dev-only` | Append events only |
+| `audit-reader` | `audit-reader-dev-only` | Query and verify only |
+
+In Bruno, open the request's **Auth** tab, select **Basic Auth**, and enter the appropriate username and password. Override the passwords with `AUDIT_LOCAL_ADMIN_PASSWORD`, `AUDIT_LOCAL_WRITER_PASSWORD`, and `AUDIT_LOCAL_READER_PASSWORD` when needed.
+
+The authorization matrix is:
+
+| Operation | Required authority |
+| --- | --- |
+| Append events | `AUDIT_WRITER` |
+| Query events and view API documentation | `AUDIT_READER` |
+| Verify chains or export bundles | `AUDIT_VERIFIER` |
+| Create signed exports | `AUDIT_EXPORTER` |
+| Redact payload leaves | `AUDIT_PRIVACY_ADMIN` |
+| Execute retention | `AUDIT_RETENTION_ADMIN` |
+| Read Prometheus metrics | `AUDIT_MONITOR` |
+
+Health and application-info probes are public. All other unmatched routes fail closed. Missing or invalid credentials return HTTP 401; valid credentials without the required authority return HTTP 403.
 
 ## Append an audit event
 
@@ -38,6 +64,7 @@ Useful endpoints:
 
 ```bash
 curl --request POST http://localhost:8080/audit/events \
+  --user audit-writer:audit-writer-dev-only \
   --header "Content-Type: application/json" \
   --data '{
     "eventType": "RECORD_UPDATED",
@@ -74,11 +101,13 @@ Useful Bruno validation checks are `limit=201`, `afterSequence=-1`, a blank stri
 
 ## Verify the audit chain
 
-Create a Bruno GET request to:
+Create a Bruno GET request using the `audit-reader` credentials:
 
 ```text
-http://localhost:8080/audit/verification
+http://localhost:8080/audit/verify
 ```
+
+`/audit/verification` remains available as a compatibility alias.
 
 A clean chain returns HTTP 200 with `valid: true`, the number of verified events, and the current chain-head sequence. A broken chain also returns HTTP 200 because the verification operation completed successfully; inspect `valid`, `firstInvalidSequence`, `violationType`, and `detail` for the integrity result.
 
@@ -90,7 +119,7 @@ Violation types distinguish a missing chain head, sequence gap, unsupported hash
 
 Retention uses server-controlled `recordedAt`, not caller-controlled event time. It marks expired records with `archivedAt`; it never physically deletes them, so complete chain verification remains possible. Normal event queries omit archived records.
 
-Run one bounded batch manually in Bruno:
+Run one bounded batch manually in Bruno using the `audit-admin` credentials:
 
 ```text
 POST http://localhost:8080/audit/retention/runs
@@ -115,7 +144,7 @@ Set `audit.retention.enabled=true` to enable the scheduler. Each invocation proc
 
 New events use hash version 2 and create a salted commitment for every JSON payload leaf. Redaction replaces selected values with commitment markers and destroys their 256-bit salts, while verification reconstructs the same committed payload tree. Hash-version-1 events remain verifiable but cannot be safely redacted and return HTTP 409.
 
-Use the event UUID returned by the append request and RFC 6901 JSON Pointer paths:
+Use the `audit-admin` credentials, the event UUID returned by the append request, and RFC 6901 JSON Pointer paths:
 
 ```text
 POST http://localhost:8080/audit/events/{eventId}/redactions
@@ -136,7 +165,7 @@ The original value and salt are not recoverable through the service after a succ
 
 ## Create and verify a scoped export
 
-The export is scoped to exactly one actor or one resource. In Bruno, create one of these GET requests:
+The export is scoped to exactly one actor or one resource. In Bruno, use the `audit-admin` credentials and create one of these GET requests:
 
 ```text
 GET http://localhost:8080/audit/exports?actorId=user-123
@@ -171,6 +200,10 @@ Override credentials with `AUDIT_DB_URL`, `AUDIT_DB_USERNAME`, and `AUDIT_DB_PAS
 
 The PostgreSQL profile also refuses to start without explicit export signing-key environment variables. This fail-fast behavior prevents an accidental production deployment from using the local demonstration identity.
 
+PostgreSQL uses OAuth2 JWT bearer tokens instead of local users. Configure `AUDIT_SECURITY_ISSUER_URI`, `AUDIT_SECURITY_JWK_SET_URI`, and `AUDIT_SECURITY_AUDIENCE`. Tokens must pass signature, issuer, lifetime, and audience validation and provide a `roles` claim containing the exact authorities listed above. Supplying the JWK Set URI separately allows startup without authorization-server discovery while issuer validation remains enabled.
+
+TLS termination is mandatory in a deployed environment. HTTP Basic is restricted to the H2 profile, and CSRF is disabled because the service is a stateless token-authenticated API; do not add cookie/session authentication without revisiting that decision.
+
 ## Quality gate
 
 ```bash
@@ -179,14 +212,15 @@ The PostgreSQL profile also refuses to start without explicit export signing-key
 
 The build runs JUnit 5 tests and fails below 85% line coverage or 75% branch coverage. The HTML report is generated at `target/site/jacoco/index.html`.
 
-## Milestone 7 interview questions
+## Security interview questions
 
-- Why are bridge records necessary? A global hash chain cannot prove selected non-contiguous events without the intervening record hashes; bridges retain continuity while omitting unrelated content.
-- Why sign the manifest when it already contains hashes? Hashes detect internal changes, but a signature authenticates which service/key issued the bundle and protects the declared scope and chain head.
-- Why Ed25519? It offers modern asymmetric signatures, compact keys/signatures, deterministic signing behavior, and direct Java platform support.
-- Why use repeatable-read? The chain head and streamed records must represent one database snapshot; otherwise concurrent appends could produce a bundle whose records disagree with its head.
-- Is the bundle fully self-trusting? No. A recipient must trust the signing public key or key ID through an independent channel; accepting only the public key embedded in an arbitrary bundle would allow attacker-signed exports.
-- What is the scalability trade-off? A self-contained proof over one global chain is O(n). Large deployments should use asynchronous generation and externally anchored checkpoints or a scoped/Merkle proof design.
+- Why Basic locally and JWT for PostgreSQL? Basic keeps Bruno-based H2 demonstration self-contained, while JWT delegates production authentication, token lifecycle, and identity governance to an authorization server.
+- Why validate issuer and audience? Signature validation establishes who signed a token; issuer and audience validation also establish who issued it and that it was intended for this service.
+- Why separate authorities? Least privilege prevents a reader from appending evidence or an ordinary writer from executing privacy and retention administration.
+- Why is health public but Prometheus protected? Orchestrators need probes without credentials, while metrics can reveal operational information useful to an attacker.
+- Why 401 versus 403? HTTP 401 means usable authentication is absent; HTTP 403 means an authenticated principal lacks authority.
+- Does authentication make request `actorId` trustworthy? No. The generic append API may represent an upstream subject. The typed compliance endpoint must define how subject identity relates to the authenticated source and effective principal.
+- Why is CSRF disabled? The production API accepts bearer tokens rather than browser cookies. The local Basic mode is development-only; introducing session/cookie authentication requires enabling an appropriate CSRF strategy.
 
 ## Documentation
 

@@ -75,3 +75,12 @@ This log records material AI assistance and the engineer's decision for traceabi
 - Accepted direction: Reuse the existing audit chain as the evidence source instead of creating a second reporting ledger; distinguish integrity of accepted records from completeness of source-system emission.
 - Scoped out: Runtime changes, authentication, source connectors, direct regulator access, scheduled delivery, jurisdiction-specific retention, and unmeasured database indexes.
 - Validation: The documentation covers clarification, ambiguities, assumptions, normalized requirements, technical design, and implemented/deferred scope. Local Markdown targets resolve, Maven verification passes with 28 tests, and the existing JaCoCo gates remain above threshold.
+
+## 2026-08-15 - Milestone 9 API security and contract alignment
+
+- Intent: Protect audit capabilities with least-privilege authorities and expose the assignment-specified chain verification path before implementing typed compliance reporting.
+- AI contribution: Verified current Spring Security guidance; proposed and implemented shared authorization rules, H2 Basic users, PostgreSQL JWT issuer/JWK/audience validation, explicit roles-claim mapping, stateless sessions, JSON 401/403 handling, protected metrics/documentation, Swagger schemes, `/audit/verify` compatibility, tests, Bruno guidance, and an ADR.
+- Engineer decision: Reviewed and explicitly approved for commit and push on 2026-08-15.
+- Modifications after validation: Replaced an unavailable Boot 3-era MockMvc auto-configuration import with real HTTP integration testing. Accounted for Spring Security 7's additional `FACTOR_BEARER` authority without weakening explicit role assertions. Permitted internal error dispatches so application failures retain their correct HTTP semantics.
+- Design boundary: Local Basic credentials are public H2 fixtures. PostgreSQL relies on an external authorization server. Generic event `actorId` remains a reported subject rather than an authenticated-principal guarantee; typed compliance ingestion must resolve that distinction.
+- Validation: Real HTTP tests cover public probes, 401, 403, writer/reader separation, verification aliases, export denial, and protected Prometheus access. A JWT unit test confirms exact roles-claim mapping, and the existing API tests now authenticate explicitly.

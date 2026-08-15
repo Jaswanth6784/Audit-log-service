@@ -8,6 +8,14 @@ spring:
       maximum-pool-size: ${AUDIT_DB_POOL_SIZE:10}
       connection-timeout: 30000
       validation-timeout: 5000
+  security:
+    oauth2:
+      resourceserver:
+        jwt:
+          issuer-uri: ${AUDIT_SECURITY_ISSUER_URI}
+          jwk-set-uri: ${AUDIT_SECURITY_JWK_SET_URI}
+          audiences:
+            - ${AUDIT_SECURITY_AUDIENCE:audit-log-service}
 
 audit:
   export:

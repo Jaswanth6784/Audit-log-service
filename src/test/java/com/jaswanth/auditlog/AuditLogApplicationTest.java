@@ -23,6 +23,8 @@ class AuditLogApplicationTest {
     void contextStartsWithFlywayAndOpenApiConfiguration() {
         assertThat(openAPI.getInfo().getTitle()).isEqualTo("Audit Log Service API");
         assertThat(openAPI.getInfo().getVersion()).isEqualTo("v1");
+        assertThat(openAPI.getComponents().getSecuritySchemes())
+                .containsKeys("basicAuth", "bearerAuth");
 
         var chainHead = jdbcClient.sql("""
                         SELECT last_sequence, last_hash

@@ -7,6 +7,7 @@ import com.jaswanth.auditlog.audit.domain.AuditHashService;
 import com.jaswanth.auditlog.audit.infrastructure.persistence.AuditChainHeadRepository;
 import com.jaswanth.auditlog.audit.infrastructure.persistence.AuditEventEntity;
 import com.jaswanth.auditlog.audit.infrastructure.persistence.AuditEventRepository;
+import com.jaswanth.auditlog.support.TestCredentials;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
@@ -115,6 +116,7 @@ class AuditEventAppendIntegrationTest {
         var request = HttpRequest.newBuilder(URI.create("http://localhost:" + port + "/audit/events"))
                 .timeout(Duration.ofSeconds(10))
                 .header("Content-Type", "application/json")
+                .header("Authorization", TestCredentials.ADMIN)
                 .POST(HttpRequest.BodyPublishers.ofString(body))
                 .build();
         return httpClient.send(request, HttpResponse.BodyHandlers.ofString());

@@ -2,6 +2,7 @@ package com.jaswanth.auditlog.audit.api;
 
 import com.jaswanth.auditlog.audit.application.AppendAuditEventCommand;
 import com.jaswanth.auditlog.audit.application.AppendAuditEventService;
+import com.jaswanth.auditlog.support.TestCredentials;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
@@ -109,6 +110,7 @@ class AuditEventQueryIntegrationTest {
     private HttpResponse<String> get(HttpClient httpClient, String query) throws Exception {
         var request = HttpRequest.newBuilder(URI.create("http://localhost:" + port + "/audit/events" + query))
                 .timeout(Duration.ofSeconds(10))
+                .header("Authorization", TestCredentials.READER)
                 .GET()
                 .build();
         return httpClient.send(request, HttpResponse.BodyHandlers.ofString());

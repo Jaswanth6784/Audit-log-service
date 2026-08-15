@@ -4,6 +4,7 @@ import com.jaswanth.auditlog.audit.application.AppendAuditEventCommand;
 import com.jaswanth.auditlog.audit.application.AppendAuditEventService;
 import com.jaswanth.auditlog.audit.domain.AuditHashService;
 import com.jaswanth.auditlog.audit.infrastructure.persistence.AuditEventRepository;
+import com.jaswanth.auditlog.support.TestCredentials;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
@@ -141,6 +142,7 @@ class RedactionIntegrationTest {
                         "http://localhost:" + port + "/audit/events/" + eventId + "/redactions"))
                 .timeout(Duration.ofSeconds(10))
                 .header("Content-Type", "application/json")
+                .header("Authorization", TestCredentials.ADMIN)
                 .POST(HttpRequest.BodyPublishers.ofString(body))
                 .build();
         return client.send(request, HttpResponse.BodyHandlers.ofString());
@@ -149,6 +151,7 @@ class RedactionIntegrationTest {
     private JsonNode get(HttpClient client, String path) throws Exception {
         var request = HttpRequest.newBuilder(URI.create("http://localhost:" + port + path))
                 .timeout(Duration.ofSeconds(10))
+                .header("Authorization", TestCredentials.ADMIN)
                 .GET()
                 .build();
         var response = client.send(request, HttpResponse.BodyHandlers.ofString());

@@ -14,3 +14,8 @@ audit:
     key-id: local-dev-rfc8032-key
     private-key: MC4CAQAwBQYDK2VwBCIEIJ1hsZ3v/VpguoRK9JLsLMREScVpezJpGXA7rAMcrn9g
     public-key: MCowBQYDK2VwAyEA11qYAYKxCrfVS/7TyWQHOg7hcvPapiMlrwIaaPcHURo=
+  security:
+    local:
+      admin-password: ${AUDIT_LOCAL_ADMIN_PASSWORD:audit-admin-dev-only}
+      writer-password: ${AUDIT_LOCAL_WRITER_PASSWORD:audit-writer-dev-only}
+      reader-password: ${AUDIT_LOCAL_READER_PASSWORD:audit-reader-dev-only}
