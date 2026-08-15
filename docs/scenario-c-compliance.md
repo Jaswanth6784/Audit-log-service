@@ -1,3 +1,5 @@
 # Scenario C - Compliance Reporting
 
-The product statement, "Regulators need to be able to audit access to client account data," is intentionally ambiguous. Clarification questions, normalized requirements, assumptions, scope decisions, and the implemented reporting slice will be developed before Scenario C code is written.
+The complete clarification, assumptions, normalized requirement, acceptance criteria, implemented design, validation strategy, and deferred boundaries are maintained in [Scenario C: Compliance Reporting](scenario-c-compliance-reporting.md).
+
+This short file is retained as a compatibility pointer so earlier milestone links do not become dead references.

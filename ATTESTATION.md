@@ -6,6 +6,6 @@
 - Email address: `jaswanth8961@gmail.com`
 - Assignment: `Build an AI-Assisted Software Engineering System - Audit Log Service`
 - Start date: `2026-08-15`
-- Submission date: `TODO`
+- Submission date: `2026-08-15`
 
-I, Jaswanth Yanamadala, attest that this submission is my own individual work, completed on my own machine and accounts, and that it honestly reflects my development process and use of AI.
+I, Jaswanth Yanamadala, attest that this submission is my own individual work, completed on my personal machine and accounts, and that it honestly reflects my development process and use of AI.

@@ -4,7 +4,7 @@ Production-oriented prototype of an append-only, tamper-evident audit log servic
 
 ## Current milestone
 
-Milestone 12 adds signed compliance access exports whose manifests bind controlled report criteria, purpose, criteria fingerprint, captured chain head, matching count, and global-chain evidence for independent integrity verification.
+Milestone 13 completes assignment-readiness traceability, aligns security and documentation with the implemented system, and validates the project from clean sources. The implementation covers all three assignment scenarios; remaining production boundaries are explicit in the final engineering summary.
 
 ## Prerequisites
 
@@ -248,13 +248,12 @@ Content-Type: application/json
 
 ```json
 {
-  "actorId": "privacy-officer-1",
   "reason": "approved data-subject request",
   "paths": ["/customer/ssn", "/payment/cardNumber"]
 }
 ```
 
-Only leaf paths can be redacted. The operation uses a database lock so concurrent requests cannot lose changes. It also atomically appends an `AUDIT_PAYLOAD_REDACTED` receipt containing the target, paths, commitments, actor, and reason; the response returns that receipt's event ID. Until authentication is implemented, `actorId` is caller supplied and must not be treated as verified identity.
+Only leaf paths can be redacted. The operation uses a database lock so concurrent requests cannot lose changes. It also atomically appends an `AUDIT_PAYLOAD_REDACTED` receipt containing the target, paths, commitments, authenticated privacy administrator, and reason; the response returns that receipt's event ID. An `actorId` body field is rejected because administrative identity comes from the authenticated principal.
 
 The original value and salt are not recoverable through the service after a successful commit. Back up and restore policies must account for privacy erasure requirements because an older database backup can still contain pre-redaction material.
 
@@ -335,4 +334,5 @@ The build runs JUnit 5 tests and fails below 85% line coverage or 75% branch cov
 - [Architecture](docs/architecture.md)
 - [Scenario C compliance reporting](docs/scenario-c-compliance-reporting.md)
 - [AI usage log](docs/ai-usage-log.md)
+- [Final engineering summary](docs/final-engineering-summary.md)
 - [Architecture decisions](docs/decisions/)

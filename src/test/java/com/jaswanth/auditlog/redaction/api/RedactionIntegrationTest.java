@@ -66,7 +66,6 @@ class RedactionIntegrationTest {
 
             var redaction = post(httpClient, event.eventId(), """
                     {
-                      "actorId":"privacy-officer-1",
                       "reason":"retention request",
                       "paths":["/customer/ssn"]
                     }
@@ -84,6 +83,8 @@ class RedactionIntegrationTest {
             assertThat(page.toString()).doesNotContain("111-22-3333");
             assertThat(page.get("items").get(1).get("eventType").asString())
                     .isEqualTo("AUDIT_PAYLOAD_REDACTED");
+            assertThat(page.get("items").get(1).get("actorId").asString())
+                    .isEqualTo("audit-admin");
 
             var verification = get(httpClient, "/audit/verification");
             assertThat(verification.get("valid").asBoolean()).isTrue();
@@ -91,30 +92,33 @@ class RedactionIntegrationTest {
 
             assertThat(post(httpClient, event.eventId(), """
                     {
-                      "actorId":"privacy-officer-1",
                       "reason":"duplicate request",
                       "paths":["/customer/ssn"]
                     }
                     """).statusCode()).isEqualTo(409);
             assertThat(post(httpClient, event.eventId(), """
                     {
-                      "actorId":"privacy-officer-1",
                       "reason":"invalid path test",
                       "paths":["/customer/missing"]
                     }
                     """).statusCode()).isEqualTo(409);
             assertThat(post(httpClient, UUID.randomUUID(), """
                     {
-                      "actorId":"privacy-officer-1",
                       "reason":"missing event test",
                       "paths":["/customer/ssn"]
                     }
                     """).statusCode()).isEqualTo(404);
             assertThat(post(httpClient, event.eventId(), """
                     {
-                      "actorId":"privacy-officer-1",
                       "reason":"validation test",
                       "paths":["not-a-pointer"]
+                    }
+                    """).statusCode()).isEqualTo(400);
+            assertThat(post(httpClient, event.eventId(), """
+                    {
+                      "actorId":"spoofed-privacy-officer",
+                      "reason":"identity override test",
+                      "paths":["/customer/name"]
                     }
                     """).statusCode()).isEqualTo(400);
 
@@ -124,7 +128,6 @@ class RedactionIntegrationTest {
                     event.sequenceNumber());
             assertThat(post(httpClient, event.eventId(), """
                     {
-                      "actorId":"privacy-officer-1",
                       "reason":"legacy compatibility test",
                       "paths":["/customer/name"]
                     }

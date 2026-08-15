@@ -6,6 +6,7 @@ import io.swagger.v3.oas.annotations.responses.ApiResponse;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.validation.Valid;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.core.Authentication;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
@@ -33,11 +34,12 @@ public class RedactionController {
     @ApiResponse(responseCode = "409", description = "Event or payload path cannot be redacted")
     public ResponseEntity<RedactionResponse> redact(
             @PathVariable UUID eventId,
-            @Valid @RequestBody RedactAuditEventRequest request) {
+            @Valid @RequestBody RedactAuditEventRequest request,
+            Authentication authentication) {
         return ResponseEntity.ok(RedactionResponse.from(redactionService.redact(
                 eventId,
                 request.paths(),
-                request.actorId(),
+                authentication.getName(),
                 request.reason())));
     }
 }

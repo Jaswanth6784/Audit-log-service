@@ -8,7 +8,6 @@ import jakarta.validation.constraints.Size;
 import java.util.List;
 
 public record RedactAuditEventRequest(
-        @NotBlank @Size(max = 255) String actorId,
         @NotBlank @Size(max = 500) String reason,
         @NotEmpty @Size(max = 100)
         List<@NotBlank @Size(max = 500)

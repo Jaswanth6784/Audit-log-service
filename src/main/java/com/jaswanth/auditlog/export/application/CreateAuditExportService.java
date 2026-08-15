@@ -6,6 +6,7 @@ import com.jaswanth.auditlog.export.configuration.ExportProperties;
 import com.jaswanth.auditlog.export.infrastructure.ExportSignatureService;
 import com.jaswanth.auditlog.export.model.AuditExportBundle;
 import com.jaswanth.auditlog.export.model.AuditExportManifest;
+import com.jaswanth.auditlog.export.model.AuditExportRecord;
 import com.jaswanth.auditlog.export.model.ExportChainHead;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Isolation;

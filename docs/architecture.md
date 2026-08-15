@@ -6,13 +6,13 @@ The service authenticates every non-probe route, separates authorities by capabi
 
 The service is a modular monolith organized by feature. Each feature separates HTTP adapters, application orchestration, domain rules, and infrastructure. This keeps cryptographic rules testable without Spring or a database while avoiding premature distributed-system complexity.
 
-## Planned modules
+## Feature modules
 
 - `audit`: append, query, canonicalization, hash chaining, and verification.
 - `retention`: configurable soft archival and scheduling.
 - `redaction`: payload commitments and removal of disclosure material.
 - `export`: self-contained signed export bundles.
-- `compliance`: controlled access-event ingestion and the later bounded reporting projection.
+- `compliance`: controlled access-event ingestion, bounded reporting, and signed criteria-bound export.
 - `shared`: configuration, errors, security, and observability.
 
 ## Data flow
@@ -86,7 +86,7 @@ Archived events disappear from ordinary query results but remain in the database
 
 Redaction locks a version-2 event, validates requested leaf-only JSON Pointers against its proof map, replaces each value with its original commitment marker, and removes the corresponding salt. Unredacted leaves remain independently recomputable; redacted leaves reconstruct their original commitment without retaining disclosure material. Any changed value, proof, path structure, or marker is reported as `PAYLOAD_PROOF_MISMATCH` during chain verification.
 
-The payload update and an `AUDIT_PAYLOAD_REDACTED` receipt append occur in one transaction. The receipt discloses no removed values and records the target event, paths, commitments, stated actor, and reason. Authentication will replace the caller-supplied actor with verified principal identity in the security milestone. Database backups, replicas, and logs require separate erasure governance because transactional redaction cannot remove historical copies outside the active database.
+The payload update and an `AUDIT_PAYLOAD_REDACTED` receipt append occur in one transaction. The receipt discloses no removed values and records the target event, paths, commitments, authenticated privacy administrator, and reason. The API does not accept an actor override. Database backups, replicas, and logs require separate erasure governance because transactional redaction cannot remove historical copies outside the active database.
 
 ## Export path
 
@@ -100,7 +100,7 @@ The current synchronous bundle contains a proof from genesis through the capture
 
 Scenario C is clarified in [Scenario C: Compliance Reporting](scenario-c-compliance-reporting.md). The design models client-account data access as a controlled profile of the existing audit event rather than maintaining a second ledger. Compliance reports are minimized projections over that source of truth, scoped by actor or account and a bounded UTC interval, with signed evidence for external verification.
 
-The integrity boundary is deliberate: the chain proves accepted records were not altered relative to the captured head. It cannot prove every source system emitted every required event. Production completeness requires registered-source inventory, atomic source capture, durable idempotent delivery, monitoring, and reconciliation. Authenticated principal attribution and role-separated report access are also prerequisites before the prototype can make compliance-grade claims.
+The integrity boundary is deliberate: the chain proves accepted records were not altered relative to the captured head. It cannot prove every source system emitted every required event. Production completeness requires registered-source inventory, atomic source capture, durable idempotent delivery, monitoring, and reconciliation. Authenticated principal attribution and role-separated report access are implemented; production identity governance and source-completeness controls remain prerequisites for compliance-grade claims.
 
 ## Database profiles
 
