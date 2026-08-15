@@ -1,7 +1,5 @@
 # Attestation
 
-> Complete all placeholders personally before submission. This file must contain the candidate's own accurate information.
-
 - Full name: `Jaswanth Yanamadala`
 - Email address: `jaswanth8961@gmail.com`
 - Assignment: `Build an AI-Assisted Software Engineering System - Audit Log Service`
