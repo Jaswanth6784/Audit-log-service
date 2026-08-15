@@ -7,6 +7,8 @@ spring:
     default: h2
   jackson:
     time-zone: UTC
+    deserialization:
+      fail-on-unknown-properties: true
   jpa:
     open-in-view: false
     hibernate:

@@ -89,29 +89,29 @@ Reuse the global `audit_event` chain rather than copying evidence into a reporti
 
 The hash chain protects the event fields, and version-2 leaf commitments allow later approved payload redaction. Existing resource and actor indexes support the primary report scopes. JSON payload filters may require promoted columns or PostgreSQL JSON indexes after volume measurements; no speculative index is added in this milestone.
 
-### Proposed API flow
+### API flow
 
-1. A registered source or gateway submits a typed access event after its authorization decision.
-2. Security derives actor and source identity from credentials; the application validates controlled codes and appends the canonical event.
+1. A registered source or gateway submits a typed access event after its authorization decision to the implemented `POST /compliance/access-events` endpoint.
+2. Security derives actor and source identity from credentials; the application validates controlled codes and appends the canonical event. Local H2 uses the authenticated username and fixed `LOCAL_H2_DEMO` source, while PostgreSQL JWT mode requires `client_id` for the source.
 3. An authorized compliance user requests a bounded report using account or actor scope and a UTC time range.
 4. The query reuses global sequence keyset pagination and returns a compliance-specific projection that excludes proof salts and raw payload details not required by the report.
 5. A report-view receipt is appended with criteria fingerprint, consumer principal, result boundary, and purpose, but not returned data.
 6. Large or externally delivered evidence uses the signed export mechanism with a compliance manifest binding report criteria to the captured head.
 
-Candidate API names for the later implementation are `POST /compliance/access-events`, `GET /compliance/access-reports`, and an asynchronous export job resource. Names and synchronous limits remain subject to API review. The assignment-required chain endpoint is exposed as `GET /audit/verify`; the existing `/audit/verification` path remains as a compatibility alias.
+The ingestion API is `POST /compliance/access-events`. Candidate later API names are `GET /compliance/access-reports` and an asynchronous export job resource; report names and synchronous limits remain subject to API review. The assignment-required chain endpoint is exposed as `GET /audit/verify`; the existing `/audit/verification` path remains as a compatibility alias.
 
 ### Authorization model
 
 The design separates these authorities:
 
-- `AUDIT_EVENT_WRITE`: registered source ingestion.
+- `COMPLIANCE_ACCESS_WRITE`: registered typed access-event ingestion.
 - `COMPLIANCE_REPORT_READ`: bounded internal reports.
 - `COMPLIANCE_REPORT_EXPORT`: signed evidence generation/download.
 - `AUDIT_VERIFY`: chain or bundle verification.
 - `AUDIT_PRIVACY_ADMIN`: redaction.
 - `AUDIT_RETENTION_ADMIN`: retention execution/configuration.
 
-Production identity must come from the enterprise identity provider or workload identity. The current caller-supplied `actorId` is suitable only for prototype data and cannot support a compliance-grade attribution claim.
+Production identity must come from the enterprise identity provider or workload identity. Typed ingestion derives actor and source from authenticated credentials and rejects body overrides. The generic audit append API still treats caller-supplied `actorId` as reported subject data and does not make the same compliance-attribution guarantee.
 
 ### Completeness and trust boundary
 
@@ -121,23 +121,23 @@ Hash chaining answers: “Were accepted events altered or removed relative to th
 
 | Capability | Current status | Boundary |
 | --- | --- | --- |
-| Append access-shaped events | Partially implemented through generic `POST /audit/events` | No controlled schema or authenticated identity yet |
+| Append typed access events | Implemented through `POST /compliance/access-events` | Controlled prototype taxonomy; delegation and source registration are not yet modeled |
 | Filter by actor/account/type/time | Implemented through `GET /audit/events` | Generic response exposes more audit detail than a minimized compliance projection |
-| Stable incremental reads | Implemented with sequence keyset pagination | Consumer authorization is not implemented |
+| Stable incremental reads | Implemented for generic audit queries with sequence keyset pagination and reader authorization | Compliance-specific report criteria and projection are not implemented |
 | Tamper verification | Implemented at `/audit/verify` with `/audit/verification` as an alias | Full verification remains O(n) |
 | Retention and archived verification | Implemented | Retention duration lacks Compliance approval |
 | Structured redaction | Implemented with salted commitments | Identifier-redaction policy is unresolved |
-| Actor/account signed export | Implemented | Export authorization and compliance-specific criteria manifest are not implemented |
-| Endpoint identity and role separation | Implemented with local Basic and production-profile JWT modes | Generic `actorId` attribution is still caller supplied; typed compliance ingestion must bind source and subject identities |
+| Actor/account signed export | Implemented with exporter/verifier authorization | Compliance-specific criteria manifest is not implemented |
+| Endpoint identity and role separation | Implemented with dedicated `COMPLIANCE_ACCESS_WRITE`, local Basic, and production-profile JWT modes | H2 source is a fixed demo value; generic audit `actorId` remains caller supplied |
 | Source delivery completeness | Deferred | Requires integration with source systems and operational reconciliation |
 | Direct regulator portal/submission | Out of scope | Internal authorized report production is the provisional workflow |
 
-Milestone 8 intentionally changes documentation only. It demonstrates clarification before implementation and treats the existing service as a well-reasoned partial implementation. A later approved milestone may implement the typed/minimized slice after security and API choices are accepted.
+Milestone 10 implements the typed/minimized ingestion slice after the Milestone 8 clarification and Milestone 9 security boundary. Bounded compliance reports, report-access receipts, signed compliance manifests, source delivery completeness, and direct regulator workflows remain deferred.
 
-## Validation strategy for a later implementation
+## Validation strategy
 
-- Contract tests for controlled values, required scope, time bounds, and rejected raw sensitive fields.
-- Security tests for unauthenticated, wrong-role, delegated, and service-principal access.
+- Implemented ingestion contract tests cover controlled values, rejected unknown/raw fields, category normalization, and minimized persisted payloads.
+- Implemented security tests cover unauthenticated, wrong-role, local principal attribution, and JWT source-claim resolution. Delegation remains deferred.
 - Repository/integration tests for combined filters, archived rows, pagination, and concurrent appends.
 - End-to-end tests proving report-view receipts do not leak returned data.
 - Signed-export tests binding criteria, watermark/head, counts, and records.
@@ -147,7 +147,7 @@ Milestone 8 intentionally changes documentation only. It demonstrates clarificat
 
 ## Risks and limitations
 
-- Caller-supplied identities are spoofable until authentication is implemented.
+- Generic audit-event identities remain reported caller data; typed compliance ingestion prevents actor/source overrides by deriving them from authenticated credentials.
 - A global chain serializes appends and makes full proofs O(n); scale tests may drive partitioning or checkpoint design.
 - Soft archival preserves evidence but does not establish a legally approved retention schedule.
 - Redaction can conflict with evidentiary needs and requires policy-driven field classification.
@@ -155,7 +155,7 @@ Milestone 8 intentionally changes documentation only. It demonstrates clarificat
 - An independently valid signature proves issuer and integrity only when the recipient obtains trusted public keys out of band.
 - No implementation can claim source completeness without controls beyond this service boundary.
 
-## Decisions required before implementation
+## Remaining decisions before compliance reporting and production source integration
 
 1. Compliance approves the access-action taxonomy, outcomes, required data categories, and purpose codes.
 2. Privacy approves identifiers and metadata permitted in reports and receipts.

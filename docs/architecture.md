@@ -1,6 +1,7 @@
 # Architecture Overview
 
-Security will be added as a dedicated milestone once API behavior exists. The eventual design will authenticate callers, separate append/read/verify/export authorities, validate inputs, keep secrets externalized, and keep operational logs free of audit payload data.
+The service authenticates every non-probe route, separates authorities by capability, validates inputs at typed trust boundaries, keeps secrets externalized, and keeps operational logs free of audit payload data.
+
 ## Style
 
 The service is a modular monolith organized by feature. Each feature separates HTTP adapters, application orchestration, domain rules, and infrastructure. This keeps cryptographic rules testable without Spring or a database while avoiding premature distributed-system complexity.
@@ -11,7 +12,7 @@ The service is a modular monolith organized by feature. Each feature separates H
 - `retention`: configurable soft archival and scheduling.
 - `redaction`: payload commitments and removal of disclosure material.
 - `export`: self-contained signed export bundles.
-- `reporting`: the clarified compliance-reporting slice.
+- `compliance`: controlled access-event ingestion and the later bounded reporting projection.
 - `shared`: configuration, errors, security, and observability.
 
 ## Data flow
@@ -22,6 +23,14 @@ The service is a modular monolith organized by feature. Each feature separates H
 4. JPA persists the immutable event and advances the chain head atomically.
 5. Query paths return immutable projections using keyset pagination.
 6. Verification recomputes hashes in sequence order and stops at the first inconsistency.
+
+## Compliance ingestion path
+
+`POST /compliance/access-events` is a narrow adapter over the existing append application service. Security first requires `COMPLIANCE_ACCESS_WRITE`. The adapter derives the initiating actor from the authenticated principal and derives the emitting source from the JWT `client_id` claim; local H2 uses a fixed demonstration source. Neither value can be supplied in the request body.
+
+The request accepts only enumerated action, outcome, data category, purpose, and reason values plus an opaque account ID, correlation UUID, and optional occurrence time. Unknown JSON properties fail deserialization. The application fixes `eventType` to `CLIENT_ACCOUNT_DATA_ACCESS` and `resourceType` to `CLIENT_ACCOUNT`, de-duplicates and sorts category codes, builds a minimized structured payload, then delegates to the same locked hash-chain append transaction used by generic events. This reuses integrity machinery without allowing a source to control the audit envelope or inject raw client data.
+
+The current correlation ID is evidence, not an idempotency constraint. Production source integration must define retry semantics and source-scoped uniqueness before claiming exactly-once acceptance. Delegated/effective actor representation and the bounded compliance-report API remain separate reviewed changes.
 
 ## Append transaction
 
@@ -89,6 +98,6 @@ All routes are governed by one stateless, fail-closed authorization matrix. Heal
 
 The H2 profile uses encoded in-memory HTTP Basic users with known development-only passwords. The PostgreSQL profile is an OAuth2 resource server: JWT signature, issuer, lifetime, and audience are validated using externally configured issuer/JWK metadata, and the explicit `roles` claim maps to audit authorities without an implicit prefix. Supplying both issuer and JWK Set locations avoids authorization-server discovery at startup while retaining issuer checks.
 
-CSRF is disabled because the production API is stateless and bearer-token authenticated; cookie or session authentication would require a new CSRF decision. Deployed traffic requires TLS. Endpoint authentication does not by itself make the generic event's caller-supplied `actorId` an authenticated subject; the compliance ingestion design must bind source principal, initiating actor, and effective/delegated actor explicitly.
+CSRF is disabled because the production API is stateless and bearer-token authenticated; cookie or session authentication would require a new CSRF decision. Deployed traffic requires TLS. Endpoint authentication does not by itself make the generic event's caller-supplied `actorId` an authenticated subject. Typed compliance ingestion binds initiating actor and source to authenticated credentials; effective/delegated actor representation remains deferred until IAM approves that model.
 
 The H2 profile also contains a known public demonstration signing key. PostgreSQL requires external Ed25519 key material and fails fast when it is absent. Production should place signing behind a KMS/HSM or secrets-managed signer, distribute trust roots independently, support key rotation by key ID, and record export access without logging exported payloads.

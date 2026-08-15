@@ -32,6 +32,8 @@ public class SecurityConfiguration {
                         .permitAll()
                         .requestMatchers(HttpMethod.POST, "/audit/events/*/redactions")
                         .hasAuthority(AuditAuthority.PRIVACY_ADMIN)
+                        .requestMatchers(HttpMethod.POST, "/compliance/access-events")
+                        .hasAuthority(AuditAuthority.COMPLIANCE_ACCESS_WRITE)
                         .requestMatchers(HttpMethod.POST, "/audit/events")
                         .hasAuthority(AuditAuthority.WRITE)
                         .requestMatchers(HttpMethod.GET, "/audit/events")

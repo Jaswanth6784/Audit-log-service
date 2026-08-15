@@ -84,3 +84,11 @@ This log records material AI assistance and the engineer's decision for traceabi
 - Modifications after validation: Replaced an unavailable Boot 3-era MockMvc auto-configuration import with real HTTP integration testing. Accounted for Spring Security 7's additional `FACTOR_BEARER` authority without weakening explicit role assertions. Permitted internal error dispatches so application failures retain their correct HTTP semantics.
 - Design boundary: Local Basic credentials are public H2 fixtures. PostgreSQL relies on an external authorization server. Generic event `actorId` remains a reported subject rather than an authenticated-principal guarantee; typed compliance ingestion must resolve that distinction.
 - Validation: Real HTTP tests cover public probes, 401, 403, writer/reader separation, verification aliases, export denial, and protected Prometheus access. A JWT unit test confirms exact roles-claim mapping, and the existing API tests now authenticate explicitly.
+
+## 2026-08-15 - Milestone 10 controlled compliance access ingestion
+
+- Intent: Accept minimized client-account-data access evidence through a controlled, authenticated boundary without implementing the later reporting slice.
+- AI contribution: Proposed and implemented the typed request/response model, controlled taxonomies, authenticated actor and source resolution, dedicated authority, normalized payload construction, hash-chain reuse, strict unknown-field rejection, Swagger contract, Bruno guidance, tests, and an ADR.
+- Engineer decision: Reviewed and explicitly approved for commit and push on 2026-08-15.
+- Design boundary: Event and resource types are server fixed. The H2 source identity is a local fixture; PostgreSQL derives it from JWT `client_id`. Delegation, correlation-ID idempotency, source registration/reconciliation, bounded reports, report-view receipts, and compliance-specific export manifests remain deferred.
+- Validation: Focused real-HTTP tests cover 401, 403, successful writer ingestion, identity derivation, controlled normalization, spoofed/unknown-field rejection, unsupported enum rejection, minimized persistence, and valid chain verification after append. The full Maven build passes with 33 tests, 94.88% line coverage, and 78.45% branch coverage.

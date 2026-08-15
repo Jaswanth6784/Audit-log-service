@@ -4,7 +4,7 @@ Production-oriented prototype of an append-only, tamper-evident audit log servic
 
 ## Current milestone
 
-Milestone 9 adds role-separated API security, development Basic authentication, production-profile JWT validation, JSON 401/403 responses, protected monitoring, Swagger security schemes, and the assignment-compatible `/audit/verify` endpoint. Typed compliance reporting remains the next reviewed implementation slice.
+Milestone 10 adds typed ingestion of client-account-data access evidence. The endpoint derives actor and source identity from authentication, accepts only controlled compliance fields, rejects arbitrary payloads and identity overrides, and appends normalized evidence through the existing tamper-evident chain. Compliance report retrieval remains the next reviewed implementation slice.
 
 ## Prerequisites
 
@@ -39,7 +39,7 @@ The H2 profile uses three in-memory HTTP Basic users. These credentials are publ
 | Username | Password | Authorities |
 | --- | --- | --- |
 | `audit-admin` | `audit-admin-dev-only` | All audit authorities |
-| `audit-writer` | `audit-writer-dev-only` | Append events only |
+| `audit-writer` | `audit-writer-dev-only` | Append audit and compliance access events |
 | `audit-reader` | `audit-reader-dev-only` | Query and verify only |
 
 In Bruno, open the request's **Auth** tab, select **Basic Auth**, and enter the appropriate username and password. Override the passwords with `AUDIT_LOCAL_ADMIN_PASSWORD`, `AUDIT_LOCAL_WRITER_PASSWORD`, and `AUDIT_LOCAL_READER_PASSWORD` when needed.
@@ -49,6 +49,7 @@ The authorization matrix is:
 | Operation | Required authority |
 | --- | --- |
 | Append events | `AUDIT_WRITER` |
+| Append typed compliance access events | `COMPLIANCE_ACCESS_WRITE` |
 | Query events and view API documentation | `AUDIT_READER` |
 | Verify chains or export bundles | `AUDIT_VERIFIER` |
 | Create signed exports | `AUDIT_EXPORTER` |
@@ -77,6 +78,45 @@ curl --request POST http://localhost:8080/audit/events \
 ```
 
 `timestamp` is optional. When omitted, the server assigns the current UTC time. The service always adds a separate server-controlled `recordedAt` value. Both values are normalized to microsecond precision before hashing so H2 and PostgreSQL round-trips remain consistent.
+
+## Record a compliance access event
+
+In Bruno, create a `POST` request to `http://localhost:8080/compliance/access-events`, select **Basic Auth**, and use `audit-writer` / `audit-writer-dev-only`. Set `Content-Type: application/json` and use:
+
+```json
+{
+  "accountId": "account-123",
+  "action": "VIEW",
+  "outcome": "ALLOWED",
+  "dataCategories": ["BALANCES", "TRANSACTIONS"],
+  "purposeCode": "CUSTOMER_SERVICE",
+  "correlationId": "d1d109d1-7e82-45e8-95b8-0503416c0f38",
+  "reasonCode": "POLICY_ALLOWED",
+  "timestamp": "2026-08-15T10:15:30.123456Z"
+}
+```
+
+A successful request returns HTTP 201. The response contains the chain sequence, event ID, normalized evidence, timestamps, hash version, and record hash. `timestamp` and `reasonCode` are optional. Duplicate data categories are removed and the remaining values are sorted before hashing.
+
+Controlled values are:
+
+- `action`: `VIEW`, `SEARCH`, `DOWNLOAD`, `EXPORT`, `PRINT`
+- `outcome`: `ALLOWED`, `DENIED`
+- `dataCategories`: `ACCOUNT_IDENTIFIERS`, `PROFILE`, `CONTACT`, `BALANCES`, `POSITIONS`, `TRANSACTIONS`
+- `purposeCode`: `CUSTOMER_SERVICE`, `FRAUD_REVIEW`, `REGULATORY`, `OPERATIONS`, `SECURITY_INVESTIGATION`
+- `reasonCode`: `POLICY_ALLOWED`, `ROLE_NOT_PERMITTED`, `PURPOSE_NOT_PERMITTED`, `CLIENT_RESTRICTION`, `AUTHORIZATION_FAILURE`
+
+Do not send `actorId`, `sourceSystem`, or a generic `payload`: unknown fields return HTTP 400. In H2, the authenticated username becomes `actorId` and the trusted source is `LOCAL_H2_DEMO`. In the PostgreSQL JWT profile, `actorId` comes from the authenticated principal and `sourceSystem` from the required `client_id` claim.
+
+Bruno checks worth demonstrating:
+
+- no credentials returns 401;
+- `audit-reader` credentials return 403;
+- an unknown field such as `"actorId": "spoofed"` returns 400;
+- an unsupported action such as `DELETE` returns 400;
+- `GET /audit/verify` with reader credentials remains valid after ingestion.
+
+`correlationId` is recorded but is not yet a database uniqueness key. A source retry can therefore create another valid event; production delivery needs an agreed idempotency key and source-scoped uniqueness policy.
 
 ## Query audit events
 
@@ -219,7 +259,11 @@ The build runs JUnit 5 tests and fails below 85% line coverage or 75% branch cov
 - Why separate authorities? Least privilege prevents a reader from appending evidence or an ordinary writer from executing privacy and retention administration.
 - Why is health public but Prometheus protected? Orchestrators need probes without credentials, while metrics can reveal operational information useful to an attacker.
 - Why 401 versus 403? HTTP 401 means usable authentication is absent; HTTP 403 means an authenticated principal lacks authority.
-- Does authentication make request `actorId` trustworthy? No. The generic append API may represent an upstream subject. The typed compliance endpoint must define how subject identity relates to the authenticated source and effective principal.
+- Does authentication make every request `actorId` trustworthy? No. The generic append API may represent an upstream subject. The typed compliance endpoint is narrower: it derives its initiating actor from the authenticated principal and does not accept an actor override.
+- Why use a separate typed compliance endpoint? It prevents sources from selecting the evidence type, resource type, identity, or arbitrary payload shape, making validation and data minimization enforceable at the trust boundary.
+- Why derive `sourceSystem` from JWT `client_id`? A request body is attacker-controlled; a validated credential claim binds the emitting workload identity to the accepted evidence.
+- Why normalize category ordering? Semantically equivalent requests should produce one deterministic payload representation before commitment and hashing.
+- Does hash chaining prove every access was recorded? No. It proves integrity of accepted events. Completeness also requires atomic source capture, idempotent delivery, monitoring, and reconciliation.
 - Why is CSRF disabled? The production API accepts bearer tokens rather than browser cookies. The local Basic mode is development-only; introducing session/cookie authentication requires enabling an appropriate CSRF strategy.
 
 ## Documentation

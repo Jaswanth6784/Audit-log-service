@@ -33,12 +33,13 @@ public class LocalAuthenticationConfiguration {
                         AuditAuthority.EXPORT,
                         AuditAuthority.PRIVACY_ADMIN,
                         AuditAuthority.RETENTION_ADMIN,
-                        AuditAuthority.MONITOR)
+                        AuditAuthority.MONITOR,
+                        AuditAuthority.COMPLIANCE_ACCESS_WRITE)
                 .build();
         var writer = User.builder()
                 .username("audit-writer")
                 .password(passwordEncoder.encode(properties.writerPassword()))
-                .authorities(AuditAuthority.WRITE)
+                .authorities(AuditAuthority.WRITE, AuditAuthority.COMPLIANCE_ACCESS_WRITE)
                 .build();
         var reader = User.builder()
                 .username("audit-reader")

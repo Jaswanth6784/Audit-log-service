@@ -1,6 +1,7 @@
 package com.jaswanth.auditlog.shared.error;
 
 import com.jaswanth.auditlog.audit.application.InvalidAuditQueryException;
+import com.jaswanth.auditlog.compliance.application.InvalidComplianceIdentityException;
 import com.jaswanth.auditlog.export.application.ExportTooLargeException;
 import com.jaswanth.auditlog.export.application.InvalidExportScopeException;
 import com.jaswanth.auditlog.redaction.application.AuditEventNotFoundException;
@@ -33,6 +34,13 @@ public class ApiExceptionHandler {
     ProblemDetail handleExportTooLarge(ExportTooLargeException exception) {
         var problem = ProblemDetail.forStatusAndDetail(HttpStatus.CONTENT_TOO_LARGE, exception.getMessage());
         problem.setTitle("Audit export is too large");
+        return problem;
+    }
+
+    @ExceptionHandler(InvalidComplianceIdentityException.class)
+    ProblemDetail handleInvalidComplianceIdentity(InvalidComplianceIdentityException exception) {
+        var problem = ProblemDetail.forStatusAndDetail(HttpStatus.FORBIDDEN, exception.getMessage());
+        problem.setTitle("Compliance identity is not trusted");
         return problem;
     }
 
