@@ -41,3 +41,11 @@ This log records material AI assistance and the engineer's decision for traceabi
 - Engineer decision: Reviewed and explicitly approved for commit and push on 2026-08-15.
 - Design boundary: Verification includes archived rows and returns HTTP 200 for both valid and invalid integrity results because transport success is distinct from the reported verification outcome. Full-chain verification remains synchronous for this prototype; background checkpointed verification is documented as the production scaling path.
 - Validation: Twelve tests pass. A three-event integration fixture verifies cleanly, then a direct SQL update to sequence 2 is reported as `CONTENT_HASH_MISMATCH` with one preceding event verified. JaCoCo line and branch gates pass.
+
+## 2026-08-15 - Milestone 5 retention
+
+- Intent: Apply a configurable retention policy without invalidating the global hash chain.
+- AI contribution: Proposed and implemented ingestion-time eligibility, bounded soft-archive batches, an opt-in scheduler, a manual administrative endpoint, a portable retention index, structured operational logging, and an ADR documenting why physical deletion is deferred.
+- Engineer decision: Reviewed and explicitly approved for commit and push on 2026-08-15.
+- Design boundary: The scheduler handles one batch per invocation, ordinary queries exclude archived rows, and verification still scans them. The administrative endpoint is deliberately unsecured only until the planned security milestone.
+- Validation: Retention integration coverage archives three eligible events across two bounded runs, confirms an empty repeat run is harmless, confirms archived rows disappear from reads, and verifies all four stored events still form a valid chain.

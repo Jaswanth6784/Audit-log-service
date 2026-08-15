@@ -46,6 +46,12 @@ Verification reads the chain head and streams every event in sequence order insi
 
 The pure domain verifier owns the violation taxonomy and has no JPA or HTTP dependencies. The application layer only supplies a consistent database snapshot and maps persistence entities into verifier inputs. Full verification is intentionally O(n); for a very large production chain, the same algorithm should run as a controlled background job with persisted progress and an externally anchored checkpoint rather than occupying a synchronous request for an unbounded duration.
 
+## Retention path
+
+Retention is a soft-archive state transition on operational metadata. Eligibility is based on server-controlled ingestion time (`recorded_at`) rather than caller-controlled event occurrence time. Each transaction selects at most `batch-size + 1` eligible sequence numbers, archives no more than `batch-size`, and uses the extra candidate to report whether backlog remains. The scheduler is opt-in and processes one bounded batch per invocation; the same operation is exposed for manual demonstration and future administrative orchestration.
+
+Archived events disappear from ordinary query results but remain in the database and in complete verification scans. This preserves hash-chain evidence and avoids pretending that physical deletion is compatible with the current globally linked chain. Database privileges must prevent application users from changing `recorded_at` or `archived_at` directly; these operational fields are not part of hash version 1's assignment-event content commitment.
+
 ## Database profiles
 
 H2 in PostgreSQL compatibility mode is the default for rapid local development. PostgreSQL is the intended production database. Flyway is the only schema owner; Hibernate validates rather than creates schema. PostgreSQL-specific locking and type behavior must be tested with Testcontainers before production claims are made.

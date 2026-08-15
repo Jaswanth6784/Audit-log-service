@@ -4,7 +4,7 @@ Production-oriented prototype of an append-only, tamper-evident audit log servic
 
 ## Current milestone
 
-Milestone 4 provides immutable event append, filtered sequence-ordered reads, and complete hash-chain verification with first-failure diagnostics. The Scenario B extensions remain intentionally deferred to later reviewed milestones.
+Milestone 5 provides immutable event append, filtered sequence-ordered reads, complete hash-chain verification, and configurable soft-archive retention. Redaction and export remain intentionally deferred to later reviewed milestones.
 
 ## Prerequisites
 
@@ -85,6 +85,31 @@ A clean chain returns HTTP 200 with `valid: true`, the number of verified events
 To demonstrate tamper detection locally, append at least two events and directly alter an assignment event field in the H2 console or database client—for example, change the second row's `actor_id`. The next verification should return `CONTENT_HASH_MISMATCH` at sequence 2. Direct database modification is deliberately used only as a verification test; the application exposes no update or delete audit-event API.
 
 Violation types distinguish a missing chain head, sequence gap, unsupported hash version, predecessor-link mismatch, content-hash mismatch, record-hash mismatch, and chain-head sequence/hash mismatch.
+
+## Apply retention
+
+Retention uses server-controlled `recordedAt`, not caller-controlled event time. It marks expired records with `archivedAt`; it never physically deletes them, so complete chain verification remains possible. Normal event queries omit archived records.
+
+Run one bounded batch manually in Bruno:
+
+```text
+POST http://localhost:8080/audit/retention/runs
+```
+
+The response reports `archivedCount` and `hasMoreEligibleEvents`. Repeat the request while that flag is true. This administrative endpoint is intentionally available for assignment demonstration and must be authorization-protected in the security milestone.
+
+Default configuration:
+
+```yaml
+audit:
+  retention:
+    enabled: false
+    max-age: 365d
+    batch-size: 500
+    fixed-delay: 1h
+```
+
+Set `audit.retention.enabled=true` to enable the scheduler. Each invocation processes at most one batch, preventing a large backlog from creating an unbounded database transaction. Environment variables such as `AUDIT_RETENTION_ENABLED`, `AUDIT_RETENTION_MAX_AGE`, `AUDIT_RETENTION_BATCH_SIZE`, and `AUDIT_RETENTION_FIXED_DELAY` can override these settings.
 
 ## Optional PostgreSQL setup
 

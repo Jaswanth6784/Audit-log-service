@@ -48,6 +48,13 @@ springdoc:
     operations-sorter: method
     tags-sorter: alpha
 
+audit:
+  retention:
+    enabled: false
+    max-age: 365d
+    batch-size: 500
+    fixed-delay: 1h
+
 logging:
   level:
     root: INFO
