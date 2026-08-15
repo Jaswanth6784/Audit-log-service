@@ -1,6 +1,8 @@
 package com.jaswanth.auditlog.shared.error;
 
 import com.jaswanth.auditlog.audit.application.InvalidAuditQueryException;
+import com.jaswanth.auditlog.export.application.ExportTooLargeException;
+import com.jaswanth.auditlog.export.application.InvalidExportScopeException;
 import com.jaswanth.auditlog.redaction.application.AuditEventNotFoundException;
 import com.jaswanth.auditlog.redaction.application.InvalidRedactionException;
 import com.jaswanth.auditlog.redaction.application.UnsupportedRedactionException;
@@ -17,6 +19,20 @@ public class ApiExceptionHandler {
     ProblemDetail handleInvalidAuditQuery(InvalidAuditQueryException exception) {
         var problem = ProblemDetail.forStatusAndDetail(HttpStatus.BAD_REQUEST, exception.getMessage());
         problem.setTitle("Invalid audit query");
+        return problem;
+    }
+
+    @ExceptionHandler(InvalidExportScopeException.class)
+    ProblemDetail handleInvalidExportScope(InvalidExportScopeException exception) {
+        var problem = ProblemDetail.forStatusAndDetail(HttpStatus.BAD_REQUEST, exception.getMessage());
+        problem.setTitle("Invalid export scope");
+        return problem;
+    }
+
+    @ExceptionHandler(ExportTooLargeException.class)
+    ProblemDetail handleExportTooLarge(ExportTooLargeException exception) {
+        var problem = ProblemDetail.forStatusAndDetail(HttpStatus.CONTENT_TOO_LARGE, exception.getMessage());
+        problem.setTitle("Audit export is too large");
         return problem;
     }
 

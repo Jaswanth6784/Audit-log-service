@@ -54,6 +54,8 @@ audit:
     max-age: 365d
     batch-size: 500
     fixed-delay: 1h
+  export:
+    max-chain-events: 10000
 
 logging:
   level:

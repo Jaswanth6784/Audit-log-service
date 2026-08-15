@@ -7,3 +7,10 @@ spring:
   h2:
     console:
       enabled: false
+
+# Public RFC 8032 test-vector key. Development only; never use it outside the H2 profile.
+audit:
+  export:
+    key-id: local-dev-rfc8032-key
+    private-key: MC4CAQAwBQYDK2VwBCIEIJ1hsZ3v/VpguoRK9JLsLMREScVpezJpGXA7rAMcrn9g
+    public-key: MCowBQYDK2VwAyEA11qYAYKxCrfVS/7TyWQHOg7hcvPapiMlrwIaaPcHURo=

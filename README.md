@@ -4,7 +4,7 @@ Production-oriented prototype of an append-only, tamper-evident audit log servic
 
 ## Current milestone
 
-Milestone 6 provides immutable event append, filtered sequence-ordered reads, complete hash-chain verification, configurable soft-archive retention, and commitment-based payload redaction. Verifiable export remains intentionally deferred to a later reviewed milestone.
+Milestone 7 adds signed, actor- or resource-scoped verifiable exports to immutable event append, filtered sequence-ordered reads, complete hash-chain verification, configurable soft-archive retention, and commitment-based payload redaction. Security remains a separate reviewed milestone.
 
 ## Prerequisites
 
@@ -134,6 +134,30 @@ Only leaf paths can be redacted. The operation uses a database lock so concurren
 
 The original value and salt are not recoverable through the service after a successful commit. Back up and restore policies must account for privacy erasure requirements because an older database backup can still contain pre-redaction material.
 
+## Create and verify a scoped export
+
+The export is scoped to exactly one actor or one resource. In Bruno, create one of these GET requests:
+
+```text
+GET http://localhost:8080/audit/exports?actorId=user-123
+GET http://localhost:8080/audit/exports?resourceType=ACCOUNT&resourceId=account-456
+```
+
+The response downloads a JSON bundle. `FULL` records contain matching event content and commitment proofs. `BRIDGE` records contain only sequence and hash metadata for unrelated events, allowing the recipient to reproduce the global chain without disclosing unrelated payloads. Archived matching records are included, and redacted values remain redacted.
+
+To verify in Bruno, save the complete GET response body, create a second request, and paste it as the JSON body:
+
+```text
+POST http://localhost:8080/audit/exports/verification
+Content-Type: application/json
+```
+
+A valid bundle returns `valid: true`. Change any disclosed value without changing the signature and it returns `SIGNATURE_INVALID`. The verifier also recomputes the scope, payload commitments, sequence links, record hashes, match count, and captured chain head after signature validation.
+
+The H2 profile uses a public RFC 8032 test-vector key for local demonstration only. The PostgreSQL profile requires `AUDIT_EXPORT_KEY_ID`, `AUDIT_EXPORT_PRIVATE_KEY`, and `AUDIT_EXPORT_PUBLIC_KEY`; keys are Base64-encoded PKCS#8 private and X.509 public Ed25519 keys. In production, keep the private key in a secrets manager or KMS/HSM-backed signer, publish trusted public keys out of band, rotate using stable key IDs, and never reuse the checked-in development key.
+
+Synchronous export is capped by `audit.export.max-chain-events` (10,000 by default) because a self-contained global-chain proof is O(n). A production extension should generate large bundles asynchronously, stream them to encrypted object storage, apply expiry/download authorization, and retain job/audit metadata.
+
 ## Optional PostgreSQL setup
 
 PostgreSQL is configured but is not the default database during the current milestone.
@@ -145,6 +169,8 @@ SPRING_PROFILES_ACTIVE=postgres ./mvnw spring-boot:run
 
 Override credentials with `AUDIT_DB_URL`, `AUDIT_DB_USERNAME`, and `AUDIT_DB_PASSWORD`. Never use the compose development password in a shared or production environment.
 
+The PostgreSQL profile also refuses to start without explicit export signing-key environment variables. This fail-fast behavior prevents an accidental production deployment from using the local demonstration identity.
+
 ## Quality gate
 
 ```bash
@@ -152,6 +178,15 @@ Override credentials with `AUDIT_DB_URL`, `AUDIT_DB_USERNAME`, and `AUDIT_DB_PAS
 ```
 
 The build runs JUnit 5 tests and fails below 85% line coverage or 75% branch coverage. The HTML report is generated at `target/site/jacoco/index.html`.
+
+## Milestone 7 interview questions
+
+- Why are bridge records necessary? A global hash chain cannot prove selected non-contiguous events without the intervening record hashes; bridges retain continuity while omitting unrelated content.
+- Why sign the manifest when it already contains hashes? Hashes detect internal changes, but a signature authenticates which service/key issued the bundle and protects the declared scope and chain head.
+- Why Ed25519? It offers modern asymmetric signatures, compact keys/signatures, deterministic signing behavior, and direct Java platform support.
+- Why use repeatable-read? The chain head and streamed records must represent one database snapshot; otherwise concurrent appends could produce a bundle whose records disagree with its head.
+- Is the bundle fully self-trusting? No. A recipient must trust the signing public key or key ID through an independent channel; accepting only the public key embedded in an arbitrary bundle would allow attacker-signed exports.
+- What is the scalability trade-off? A self-contained proof over one global chain is O(n). Large deployments should use asynchronous generation and externally anchored checkpoints or a scoped/Merkle proof design.
 
 ## Documentation
 

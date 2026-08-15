@@ -83,8 +83,7 @@ public class AuditHashService {
             java.util.Map<String, Object> payload,
             java.util.Map<String, Object> payloadProofs) {
         var contentHash = sha256(canonicalEvent.bytes());
-        var recordInput = String.join("\n", recordDomain, previousHash, contentHash);
-        var recordHash = sha256(recordInput.getBytes(StandardCharsets.UTF_8));
+        var recordHash = calculateRecordHash(recordDomain, previousHash, contentHash);
         return new AuditHashes(
                 hashVersion,
                 contentHash,
@@ -92,6 +91,22 @@ public class AuditHashService {
                 recordHash,
                 payload,
                 payloadProofs);
+    }
+
+    public String calculateRecordHash(short hashVersion, String previousHash, String contentHash) {
+        var recordDomain = switch (hashVersion) {
+            case HASH_VERSION -> RECORD_DOMAIN;
+            case CURRENT_HASH_VERSION -> CURRENT_RECORD_DOMAIN;
+            default -> throw new IllegalArgumentException("Unsupported hash version " + hashVersion);
+        };
+        return calculateRecordHash(recordDomain, previousHash, contentHash);
+    }
+
+    private String calculateRecordHash(String recordDomain, String previousHash, String contentHash) {
+        requireSha256Hex(previousHash);
+        requireSha256Hex(contentHash);
+        var recordInput = String.join("\n", recordDomain, previousHash, contentHash);
+        return sha256(recordInput.getBytes(StandardCharsets.UTF_8));
     }
 
     private void requireSha256Hex(String hash) {

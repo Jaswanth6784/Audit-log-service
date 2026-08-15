@@ -1,4 +1,5 @@
 # Architecture Overview
+
 Security will be added as a dedicated milestone once API behavior exists. The eventual design will authenticate callers, separate append/read/verify/export authorities, validate inputs, keep secrets externalized, and keep operational logs free of audit payload data.
 ## Style
 
@@ -60,6 +61,14 @@ Redaction locks a version-2 event, validates requested leaf-only JSON Pointers a
 
 The payload update and an `AUDIT_PAYLOAD_REDACTED` receipt append occur in one transaction. The receipt discloses no removed values and records the target event, paths, commitments, stated actor, and reason. Authentication will replace the caller-supplied actor with verified principal identity in the security milestone. Database backups, replicas, and logs require separate erasure governance because transactional redaction cannot remove historical copies outside the active database.
 
+## Export path
+
+An export accepts exactly one actor scope or one resource scope. Inside a repeatable-read transaction it captures the global chain head and streams every stored event, including soft-archived records. Matching rows become `FULL` records. Non-matching rows become `BRIDGE` records containing only sequence, hash version, content hash, previous hash, and record hash. This preserves global-chain continuity without exporting unrelated event identity or payload fields.
+
+The service signs a recursively key-sorted canonical JSON manifest with Ed25519. The signature covers the bundle version and ID, generation time, declared scope, captured chain head, matching count, and every full/bridge record. Verification first checks the signature against the configured key ID and public key, then independently checks scope membership, payload commitments, content hashes, sequence continuity, predecessor links, record hashes, match count, and final head. The embedded public key is descriptive; trust must be established outside the bundle.
+
+The current synchronous bundle contains a proof from genesis through the captured head and is therefore O(n) in the global chain size. A configurable limit fails with HTTP 413 before scanning oversized chains. Production-scale generation should be asynchronous and streamed to protected object storage; externally anchored checkpoints or a Merkle-based structure are future alternatives if proof size becomes a primary requirement.
+
 ## Database profiles
 
 H2 in PostgreSQL compatibility mode is the default for rapid local development. PostgreSQL is the intended production database. Flyway is the only schema owner; Hibernate validates rather than creates schema. PostgreSQL-specific locking and type behavior must be tested with Testcontainers before production claims are made.
@@ -70,4 +79,4 @@ Actuator exposes health, readiness/liveness probes, application information, and
 
 ## Security posture
 
-Security will be added as a dedicated milestone once API behavior exists. The eventual design will authenticate callers, separate append/read/verify/export authorities, validate inputs, keep secrets externalized, and keep operational logs free of audit payload data.
+The H2 profile contains a known public demonstration signing key. The PostgreSQL profile requires external Ed25519 key material and fails fast when it is absent. Production should place signing behind a KMS/HSM or secrets-managed signer, distribute trust roots independently, support key rotation by key ID, authorize export creation separately from verification, and record export access without logging exported payloads.

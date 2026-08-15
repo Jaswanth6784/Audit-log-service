@@ -8,3 +8,9 @@ spring:
       maximum-pool-size: ${AUDIT_DB_POOL_SIZE:10}
       connection-timeout: 30000
       validation-timeout: 5000
+
+audit:
+  export:
+    key-id: ${AUDIT_EXPORT_KEY_ID}
+    private-key: ${AUDIT_EXPORT_PRIVATE_KEY}
+    public-key: ${AUDIT_EXPORT_PUBLIC_KEY}

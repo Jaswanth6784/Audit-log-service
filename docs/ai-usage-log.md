@@ -58,3 +58,11 @@ This log records material AI assistance and the engineer's decision for traceabi
 - Modifications after validation: Removed test-only constructor overloads after Spring correctly rejected ambiguous component construction. Added an atomic `AUDIT_PAYLOAD_REDACTED` receipt so successful privacy mutations carry target, commitment, actor, and reason evidence in the chain.
 - Design boundary: Version-1 events remain verifiable but return HTTP 409 for redaction. Only exact leaf paths are supported. Caller-supplied actor identity remains untrusted until security is implemented, and historical backups require separate erasure controls.
 - Validation: Unit tests cover nested objects, arrays, escaped JSON Pointer tokens, changed values, unknown paths, repeat attempts, mixed hash versions, and proof violations. End-to-end coverage confirms plaintext and salt removal, receipt creation, HTTP error behavior, and a valid chain after redaction.
+
+## 2026-08-15 - Milestone 7 signed verifiable exports
+
+- Intent: Produce actor- or resource-scoped evidence that can be verified without database access while avoiding disclosure of unrelated event content.
+- AI contribution: Proposed and implemented repeatable-read bundle generation, full and hash-only bridge records, canonical manifests, Ed25519 signatures, configured trust roots, layered verification, bounded synchronous exports, HTTP/Swagger contracts, Bruno guidance, tests, and an ADR.
+- Engineer decision: Reviewed and explicitly approved for commit and push on 2026-08-15.
+- Design boundary: Bundles prove the complete global chain from genesis to the captured head and are therefore O(n). The embedded public key is not self-authenticating. The H2 key is intentionally public development material; PostgreSQL requires external key configuration.
+- Validation: API coverage confirms scoped disclosure and bridge placement. Signed-tampering tests cover signatures, payload proofs, content, scope, sequence, predecessor links, record hashes, counts, kinds, and chain heads. The full Maven coverage gate passes.
