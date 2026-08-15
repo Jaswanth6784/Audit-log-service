@@ -35,7 +35,8 @@ public class LocalAuthenticationConfiguration {
                         AuditAuthority.RETENTION_ADMIN,
                         AuditAuthority.MONITOR,
                         AuditAuthority.COMPLIANCE_ACCESS_WRITE,
-                        AuditAuthority.COMPLIANCE_REPORT_READ)
+                        AuditAuthority.COMPLIANCE_REPORT_READ,
+                        AuditAuthority.COMPLIANCE_REPORT_EXPORT)
                 .build();
         var writer = User.builder()
                 .username("audit-writer")

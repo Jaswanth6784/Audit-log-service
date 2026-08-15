@@ -11,7 +11,7 @@ public record AuditExportVerificationResponse(
         ExportViolation violationType,
         String detail) {
 
-    static AuditExportVerificationResponse from(ExportVerificationResult result) {
+    public static AuditExportVerificationResponse from(ExportVerificationResult result) {
         return new AuditExportVerificationResponse(
                 result.valid(),
                 result.checkedRecordCount(),

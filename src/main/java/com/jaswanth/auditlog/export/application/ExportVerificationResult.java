@@ -8,11 +8,11 @@ public record ExportVerificationResult(
         ExportViolation violationType,
         String detail) {
 
-    static ExportVerificationResult valid(long checked, long full) {
+    public static ExportVerificationResult valid(long checked, long full) {
         return new ExportVerificationResult(true, checked, full, null, null, null);
     }
 
-    static ExportVerificationResult invalid(
+    public static ExportVerificationResult invalid(
             long checked,
             long full,
             Long sequence,

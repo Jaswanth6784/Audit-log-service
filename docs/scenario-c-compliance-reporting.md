@@ -96,9 +96,9 @@ The hash chain protects the event fields, and version-2 leaf commitments allow l
 3. An authorized compliance user requests a bounded report using the implemented `GET /compliance/access-reports` endpoint with account or actor scope and a UTC time range.
 4. The query reuses global sequence keyset pagination, captures an explicit chain boundary, and returns a compliance-specific projection that excludes proof salts and raw payload details not required by the report.
 5. A report-view receipt is appended with criteria fingerprint, consumer principal, result boundary, and pagination outcome, but not the raw scope or returned data.
-6. Large or externally delivered evidence uses the signed export mechanism with a compliance manifest binding report criteria to the captured head.
+6. The implemented signed compliance export binds normalized criteria, controlled purpose, criteria fingerprint, count, disclosed/bridge records, and captured head for independently verifiable integrity.
 
-The implemented APIs are `POST /compliance/access-events` and `GET /compliance/access-reports`. An asynchronous compliance export job resource remains a candidate later API. The assignment-required chain endpoint is exposed as `GET /audit/verify`; the existing `/audit/verification` path remains as a compatibility alias.
+The implemented APIs are `POST /compliance/access-events`, `GET /compliance/access-reports`, `GET /compliance/access-exports`, and `POST /compliance/access-exports/verification`. An asynchronous compliance export job resource remains a candidate later API. The assignment-required chain endpoint is exposed as `GET /audit/verify`; the existing `/audit/verification` path remains as a compatibility alias.
 
 ### Authorization model
 
@@ -106,7 +106,7 @@ The design separates these authorities:
 
 - `COMPLIANCE_ACCESS_WRITE`: registered typed access-event ingestion.
 - `COMPLIANCE_REPORT_READ`: implemented bounded internal reports.
-- `COMPLIANCE_REPORT_EXPORT`: signed evidence generation/download.
+- `COMPLIANCE_REPORT_EXPORT`: implemented signed compliance evidence generation/download.
 - `AUDIT_VERIFY`: chain or bundle verification.
 - `AUDIT_PRIVACY_ADMIN`: redaction.
 - `AUDIT_RETENTION_ADMIN`: retention execution/configuration.
@@ -128,13 +128,13 @@ Hash chaining answers: “Were accepted events altered or removed relative to th
 | Tamper verification | Implemented at `/audit/verify` with `/audit/verification` as an alias | Full verification remains O(n) |
 | Retention and archived verification | Implemented | Retention duration lacks Compliance approval |
 | Structured redaction | Implemented with salted commitments | Identifier-redaction policy is unresolved |
-| Actor/account signed export | Implemented with exporter/verifier authorization | Compliance-specific criteria manifest is not implemented |
+| Compliance signed export | Implemented with criteria-bound manifest, full/bridge records, Ed25519 signature, exporter/verifier authorization, and creation receipt | Synchronous proof is O(n); bridge privacy makes selection completeness a signer attestation |
 | Report access receipts | Implemented with authenticated consumer, criteria fingerprint, and result boundary | Receipt excludes raw scope and returned client metadata; direct regulator delivery is deferred |
 | Endpoint identity and role separation | Implemented with dedicated write/report authorities, local Basic, and production-profile JWT modes | H2 source is a fixed demo value; generic audit `actorId` remains caller supplied |
 | Source delivery completeness | Deferred | Requires integration with source systems and operational reconciliation |
 | Direct regulator portal/submission | Out of scope | Internal authorized report production is the provisional workflow |
 
-Milestones 10 and 11 implement typed ingestion plus bounded, minimized internal reports after the Milestone 8 clarification and Milestone 9 security boundary. Signed compliance manifests, asynchronous delivery, source completeness, and direct regulator workflows remain deferred.
+Milestones 10 through 12 implement typed ingestion, bounded internal reports, and signed compliance manifests after the Milestone 8 clarification and Milestone 9 security boundary. Asynchronous delivery, source completeness, and direct regulator workflows remain deferred.
 
 ## Validation strategy
 
@@ -142,7 +142,7 @@ Milestones 10 and 11 implement typed ingestion plus bounded, minimized internal 
 - Implemented security tests cover unauthenticated, wrong-role, local principal attribution, and JWT source-claim resolution. Delegation remains deferred.
 - Implemented integration tests cover combined filters, half-open time ranges, pagination, captured boundaries, and archived-row exclusion inherited from the base query. Dedicated concurrent-append testing remains future hardening.
 - Implemented end-to-end tests prove report-view receipts exclude raw account/actor scopes and returned data.
-- Signed-export tests binding criteria, watermark/head, counts, and records.
+- Implemented signed-export tests bind criteria/fingerprint, purpose, captured head, counts, full/bridge records, and receipts; tampering tests cover signatures, criteria hashes, and signed scope changes.
 - Tampering tests for event content, chain links, report criteria, and signatures.
 - Load tests using expected source volume and report windows before setting operational limits or indexes.
 - Reconciliation tests once a source outbox/delivery protocol exists.
@@ -155,6 +155,7 @@ Milestones 10 and 11 implement typed ingestion plus bounded, minimized internal 
 - Redaction can conflict with evidentiary needs and requires policy-driven field classification.
 - Report access itself exposes sensitive metadata and needs least privilege, purpose capture, monitoring, and audit receipts.
 - An independently valid signature proves issuer and integrity only when the recipient obtains trusted public keys out of band.
+- Hash-only bridges preserve unrelated-data privacy but prevent a recipient from independently evaluating whether a concealed record should have matched; the trusted signer attests selection completeness.
 - No implementation can claim source completeness without controls beyond this service boundary.
 
 ## Remaining decisions before compliance reporting and production source integration

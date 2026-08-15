@@ -4,7 +4,7 @@ Production-oriented prototype of an append-only, tamper-evident audit log servic
 
 ## Current milestone
 
-Milestone 11 adds bounded internal compliance reports with account-or-actor scope, mandatory half-open time ranges, controlled optional filters, stable sequence cursors, minimized projections, captured chain boundaries, and privacy-minimized report-access receipts.
+Milestone 12 adds signed compliance access exports whose manifests bind controlled report criteria, purpose, criteria fingerprint, captured chain head, matching count, and global-chain evidence for independent integrity verification.
 
 ## Prerequisites
 
@@ -51,6 +51,7 @@ The authorization matrix is:
 | Append events | `AUDIT_WRITER` |
 | Append typed compliance access events | `COMPLIANCE_ACCESS_WRITE` |
 | Read bounded compliance access reports | `COMPLIANCE_REPORT_READ` |
+| Create signed compliance access exports | `COMPLIANCE_REPORT_EXPORT` |
 | Query events and view API documentation | `AUDIT_READER` |
 | Verify chains or export bundles | `AUDIT_VERIFIER` |
 | Create signed exports | `AUDIT_EXPORTER` |
@@ -142,6 +143,35 @@ Useful Bruno checks:
 - use writer credentials: HTTP 403;
 - set `to` equal to an event timestamp to demonstrate the exclusive upper bound;
 - verify `/audit/verify` remains valid after report receipts are appended.
+
+## Create and verify a compliance access export
+
+In Bruno, create a GET request using `audit-admin` / `audit-admin-dev-only`. The criteria contract matches the bounded report API but exports the complete captured chain proof rather than one page:
+
+```text
+http://localhost:8080/compliance/access-exports?accountId=account-123&from=2026-08-15T00:00:00Z&to=2026-08-16T00:00:00Z&reportPurpose=REGULATORY&action=VIEW
+```
+
+The downloaded JSON contains:
+
+- a versioned `COMPLIANCE_ACCESS_REPORT` manifest;
+- normalized account-or-actor scope, mandatory purpose, half-open time bounds, and optional filters;
+- a domain-separated SHA-256 `criteriaHash`;
+- the captured sequence/hash chain head and matching count;
+- `FULL` matching access events and hash-only `BRIDGE` records for every unrelated chain position;
+- an Ed25519 signature and stable signing-key ID.
+
+Save the complete response body. Create a POST request to the verification endpoint with `audit-reader` credentials, `Content-Type: application/json`, and the saved JSON as the body:
+
+```text
+http://localhost:8080/compliance/access-exports/verification
+```
+
+A valid result returns `valid: true`. Modify a criterion, disclosed payload field, hash, record kind, count, or captured head to demonstrate tamper detection. Verification first establishes signature trust, then recomputes the criteria fingerprint, disclosed payload commitments, record hashes, sequence links, scope membership, matching count, and captured head.
+
+Every successful creation appends a `COMPLIANCE_ACCESS_REPORT_EXPORTED` receipt containing the authenticated exporter, bundle ID, criteria fingerprint, controlled purpose, signing-key ID, captured boundary, and count. It excludes the raw account/actor scope and exported client metadata. The receipt is appended after the captured boundary, so it is not self-included in its bundle.
+
+Bridge records preserve privacy but conceal the metadata needed to evaluate report criteria. Therefore, independent verification proves the integrity of disclosed matches and the full captured chain, while the trusted signer attests that no matching event was represented as a bridge. End-to-end completeness still requires source capture, delivery, reconciliation, and signer governance.
 
 ## Query audit events
 
@@ -293,6 +323,10 @@ The build runs JUnit 5 tests and fails below 85% line coverage or 75% branch cov
 - Why audit report reads? Compliance metadata is sensitive; recording who viewed which criteria and result boundary provides oversight without duplicating returned data.
 - Why fingerprint the raw scope in the receipt? It binds the receipt to known criteria while avoiding direct disclosure of an account or investigated actor in administrative evidence.
 - Why cap the candidate scan? Portable in-memory filtering is acceptable only when bounded; the cap fails safely until measured volume justifies indexed promoted fields.
+- Why keep the legacy and compliance manifests separate? The version-1 audit manifest is already a signed external contract; changing its canonical fields would invalidate existing signatures.
+- Why include bridge records? They preserve global chain continuity without disclosing unrelated event bodies or identities.
+- Can a recipient prove that a bridge was not actually a match? No. The bridge intentionally hides selection fields, so the trusted signature attests selection completeness while hashes prove chain integrity.
+- Why append the export receipt after the captured head? A bundle cannot include a receipt that does not exist until generation succeeds; the receipt instead references the immutable bundle ID, criteria hash, and captured head.
 - Why is CSRF disabled? The production API accepts bearer tokens rather than browser cookies. The local Basic mode is development-only; introducing session/cookie authentication requires enabling an appropriate CSRF strategy.
 
 ## Documentation

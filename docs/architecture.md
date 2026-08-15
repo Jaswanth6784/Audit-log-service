@@ -40,6 +40,16 @@ The transaction uses repeatable-read isolation and captures the global chain-hea
 
 After constructing the detached read snapshot, the same transaction appends a `COMPLIANCE_ACCESS_REPORT_VIEWED` receipt. Detaching is essential because Hibernate otherwise dirty-checks mutable JSON maps during the later write and can issue updates against read evidence. The receipt binds a domain-separated SHA-256 criteria fingerprint, controlled report purpose, scope type, consumer identity, captured boundary, request cursor/limit, returned range, and continuation outcome without copying the raw scope or returned metadata.
 
+## Compliance export path
+
+`GET /compliance/access-exports` requires `COMPLIANCE_REPORT_EXPORT` and the same bounded scope, purpose, time, and optional filters as a report. Under repeatable-read isolation it captures the chain head, maps every position through that head to either a content-bearing `FULL` match or privacy-preserving hash-only `BRIDGE`, and rejects chains above the configured synchronous export limit.
+
+The compliance manifest is separate from the established version-1 generic audit manifest so canonical signed bytes remain backward compatible. Both formats reuse the same record representation, canonical serializer, Ed25519 signer/trust configuration, and extracted record-chain verifier. The compliance signature additionally covers a domain-separated criteria fingerprint, normalized criteria, bundle type/ID, generation time, captured head, matching count, and records.
+
+After signing, queried entities are detached and the transaction appends a `COMPLIANCE_ACCESS_REPORT_EXPORTED` receipt. It identifies the authenticated exporter, bundle, criteria fingerprint, controlled purpose, signer key, count, and captured boundary without raw scope or client metadata. The receipt follows the captured boundary and is therefore linked by reference rather than included in its own export.
+
+Verification can independently establish signer trust, criteria-fingerprint consistency, disclosed payload commitments, record hashes, sequence continuity, full-record criteria membership, declared count, and captured head. It cannot evaluate whether a hash-only bridge should have matched because the fields needed for selection are intentionally undisclosed; completeness of selection is an attestation by the trusted signer, while end-to-end event completeness remains dependent on source controls.
+
 ## Append transaction
 
 The service maintains one global chain-head row. Each append transaction obtains a pessimistic write lock on that row, normalizes timestamps to microseconds, canonicalizes the payload, calculates the hashes, inserts the immutable event, and advances the head. An optimistic version column provides an additional stale-write guard. Any failure rolls back both changes.

@@ -36,7 +36,7 @@ public class ExportSignatureService {
         }
     }
 
-    public AuditExportSignature sign(AuditExportManifest manifest) {
+    public AuditExportSignature sign(Object manifest) {
         try {
             var signer = Signature.getInstance(ALGORITHM);
             signer.initSign(privateKey);
@@ -51,7 +51,11 @@ public class ExportSignatureService {
         }
     }
 
-    public boolean verify(AuditExportManifest manifest, AuditExportSignature exportSignature) {
+    public AuditExportSignature sign(AuditExportManifest manifest) {
+        return sign((Object) manifest);
+    }
+
+    public boolean verify(Object manifest, AuditExportSignature exportSignature) {
         if (exportSignature == null
                 || !ALGORITHM.equals(exportSignature.algorithm())
                 || !properties.keyId().equals(exportSignature.keyId())
@@ -67,6 +71,10 @@ public class ExportSignatureService {
         } catch (GeneralSecurityException | IllegalArgumentException exception) {
             return false;
         }
+    }
+
+    public boolean verify(AuditExportManifest manifest, AuditExportSignature exportSignature) {
+        return verify((Object) manifest, exportSignature);
     }
 
     private byte[] decode(String value) {

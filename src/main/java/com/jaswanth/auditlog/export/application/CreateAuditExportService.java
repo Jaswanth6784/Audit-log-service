@@ -1,13 +1,11 @@
 package com.jaswanth.auditlog.export.application;
 
 import com.jaswanth.auditlog.audit.infrastructure.persistence.AuditChainHeadRepository;
-import com.jaswanth.auditlog.audit.infrastructure.persistence.AuditEventEntity;
 import com.jaswanth.auditlog.audit.infrastructure.persistence.AuditEventRepository;
 import com.jaswanth.auditlog.export.configuration.ExportProperties;
 import com.jaswanth.auditlog.export.infrastructure.ExportSignatureService;
 import com.jaswanth.auditlog.export.model.AuditExportBundle;
 import com.jaswanth.auditlog.export.model.AuditExportManifest;
-import com.jaswanth.auditlog.export.model.AuditExportRecord;
 import com.jaswanth.auditlog.export.model.ExportChainHead;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Isolation;
@@ -53,7 +51,7 @@ public class CreateAuditExportService {
         final java.util.List<AuditExportRecord> records;
         try (var events = eventRepository.streamAllInSequenceOrder()) {
             records = events
-                    .map(event -> toRecord(event, scope.matches(event)))
+                    .map(event -> AuditExportRecords.from(event, scope.matches(event)))
                     .toList();
         }
         if (records.size() != head.getLastSequence()) {
@@ -72,24 +70,5 @@ public class CreateAuditExportService {
                 matchedEventCount,
                 records);
         return new AuditExportBundle(manifest, signatureService.sign(manifest));
-    }
-
-    private AuditExportRecord toRecord(AuditEventEntity event, boolean includeContent) {
-        return new AuditExportRecord(
-                includeContent ? AuditExportRecord.FULL : AuditExportRecord.BRIDGE,
-                event.getSequenceNumber(),
-                includeContent ? event.getEventId() : null,
-                includeContent ? event.getEventType() : null,
-                includeContent ? event.getActorId() : null,
-                includeContent ? event.getResourceType() : null,
-                includeContent ? event.getResourceId() : null,
-                includeContent ? event.getPayload() : null,
-                includeContent ? event.getPayloadProofs() : null,
-                includeContent ? event.getOccurredAt() : null,
-                includeContent ? event.getRecordedAt() : null,
-                event.getHashVersion(),
-                event.getContentHash(),
-                event.getPreviousHash(),
-                event.getRecordHash());
     }
 }

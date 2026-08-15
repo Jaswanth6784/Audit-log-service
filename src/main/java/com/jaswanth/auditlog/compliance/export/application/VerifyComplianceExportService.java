@@ -1,25 +1,29 @@
-package com.jaswanth.auditlog.export.application;
+package com.jaswanth.auditlog.compliance.export.application;
 
+import com.jaswanth.auditlog.compliance.export.model.ComplianceExportBundle;
+import com.jaswanth.auditlog.export.application.ExportRecordChainVerifier;
+import com.jaswanth.auditlog.export.application.ExportVerificationResult;
+import com.jaswanth.auditlog.export.application.ExportViolation;
 import com.jaswanth.auditlog.export.infrastructure.ExportSignatureService;
-import com.jaswanth.auditlog.export.model.AuditExportBundle;
-import com.jaswanth.auditlog.export.model.AuditExportRecord;
-import com.jaswanth.auditlog.export.model.ExportScopeDescriptor;
 import org.springframework.stereotype.Service;
 
 @Service
-public class VerifyAuditExportService {
+public class VerifyComplianceExportService {
 
     private final ExportSignatureService signatureService;
+    private final ComplianceExportCriteriaHasher criteriaHasher;
     private final ExportRecordChainVerifier chainVerifier;
 
-    public VerifyAuditExportService(
+    public VerifyComplianceExportService(
             ExportSignatureService signatureService,
+            ComplianceExportCriteriaHasher criteriaHasher,
             ExportRecordChainVerifier chainVerifier) {
         this.signatureService = signatureService;
+        this.criteriaHasher = criteriaHasher;
         this.chainVerifier = chainVerifier;
     }
 
-    public ExportVerificationResult verify(AuditExportBundle bundle) {
+    public ExportVerificationResult verify(ComplianceExportBundle bundle) {
         if (bundle == null || bundle.manifest() == null) {
             return invalid(ExportViolation.MALFORMED_BUNDLE, "Manifest is required");
         }
@@ -29,35 +33,27 @@ public class VerifyAuditExportService {
 
         try {
             var manifest = bundle.manifest();
-            if (manifest.bundleVersion() != 1 || manifest.scope() == null
-                    || manifest.chainHead() == null || manifest.records() == null) {
+            if (manifest.bundleVersion() != 1
+                    || !CreateComplianceExportService.BUNDLE_TYPE.equals(manifest.bundleType())
+                    || manifest.bundleId() == null
+                    || manifest.generatedAt() == null
+                    || manifest.chainHead() == null
+                    || manifest.records() == null) {
                 return invalid(ExportViolation.MALFORMED_BUNDLE, "Unsupported or incomplete manifest");
+            }
+            var scope = ComplianceExportScope.from(manifest.criteria());
+            if (!criteriaHasher.hash(manifest.criteria()).equals(manifest.criteriaHash())) {
+                return invalid(ExportViolation.CRITERIA_HASH_MISMATCH,
+                        "Criteria fingerprint cannot be reproduced");
             }
             return chainVerifier.verify(
                     manifest.records(),
                     manifest.chainHead(),
                     manifest.matchedEventCount(),
-                    record -> matches(manifest.scope(), record));
+                    scope::matches);
         } catch (RuntimeException exception) {
             return invalid(ExportViolation.MALFORMED_BUNDLE, "Bundle structure is invalid");
         }
-    }
-
-    private boolean matches(ExportScopeDescriptor scope, AuditExportRecord record) {
-        if ("ACTOR".equals(scope.type())) {
-            return scope.actorId() != null
-                    && scope.resourceType() == null
-                    && scope.resourceId() == null
-                    && scope.actorId().equals(record.actorId());
-        }
-        if ("RESOURCE".equals(scope.type())) {
-            return scope.actorId() == null
-                    && scope.resourceType() != null
-                    && scope.resourceId() != null
-                    && scope.resourceType().equals(record.resourceType())
-                    && scope.resourceId().equals(record.resourceId());
-        }
-        return false;
     }
 
     private ExportVerificationResult invalid(ExportViolation violation, String detail) {
