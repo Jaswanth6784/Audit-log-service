@@ -5,10 +5,14 @@ import org.springframework.data.jpa.repository.JpaSpecificationExecutor;
 import org.springframework.data.jpa.repository.Modifying;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
+import jakarta.persistence.LockModeType;
+import org.springframework.data.jpa.repository.Lock;
 
 import java.time.Instant;
 import java.util.Collection;
 import java.util.List;
+import java.util.Optional;
+import java.util.UUID;
 import java.util.stream.Stream;
 
 public interface AuditEventRepository extends
@@ -17,6 +21,10 @@ public interface AuditEventRepository extends
 
     @Query("select event from AuditEventEntity event order by event.sequenceNumber")
     Stream<AuditEventEntity> streamAllInSequenceOrder();
+
+    @Lock(LockModeType.PESSIMISTIC_WRITE)
+    @Query("select event from AuditEventEntity event where event.eventId = :eventId")
+    Optional<AuditEventEntity> findByEventIdForUpdate(@Param("eventId") UUID eventId);
 
     @Query("""
             select event.sequenceNumber

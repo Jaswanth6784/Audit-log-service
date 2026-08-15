@@ -26,13 +26,15 @@ The service is a modular monolith organized by feature. Each feature separates H
 
 The service maintains one global chain-head row. Each append transaction obtains a pessimistic write lock on that row, normalizes timestamps to microseconds, canonicalizes the payload, calculates the hashes, inserts the immutable event, and advances the head. An optimistic version column provides an additional stale-write guard. Any failure rolls back both changes.
 
-Hash version 1 stores:
+Legacy hash version 1 stores:
 
 - `content_hash = SHA-256(canonical event JSON)`
 - `previous_hash = preceding record_hash`, or 64 zeroes for genesis
 - `record_hash = SHA-256("audit-record-v1" + newline + previous_hash + newline + content_hash)`
 
 Canonical event JSON contains only the assignment event fields: actor ID, event type, resource type, resource ID, payload, and event timestamp. Object keys are sorted recursively, array order is preserved, UTF-8 is used, and the exact algorithm is protected by golden-vector tests.
+
+New appends use hash version 2. Each canonical payload leaf receives a random 256-bit salt and a domain-separated SHA-256 commitment. The content hash covers event metadata plus a tree of those commitments rather than plaintext leaf values. The stored proof map associates each RFC 6901 leaf path with its commitment and salt, and the record hash uses the `audit-record-v2` domain. Verification supports mixed version-1/version-2 chains.
 
 ## Query path
 
@@ -50,7 +52,13 @@ The pure domain verifier owns the violation taxonomy and has no JPA or HTTP depe
 
 Retention is a soft-archive state transition on operational metadata. Eligibility is based on server-controlled ingestion time (`recorded_at`) rather than caller-controlled event occurrence time. Each transaction selects at most `batch-size + 1` eligible sequence numbers, archives no more than `batch-size`, and uses the extra candidate to report whether backlog remains. The scheduler is opt-in and processes one bounded batch per invocation; the same operation is exposed for manual demonstration and future administrative orchestration.
 
-Archived events disappear from ordinary query results but remain in the database and in complete verification scans. This preserves hash-chain evidence and avoids pretending that physical deletion is compatible with the current globally linked chain. Database privileges must prevent application users from changing `recorded_at` or `archived_at` directly; these operational fields are not part of hash version 1's assignment-event content commitment.
+Archived events disappear from ordinary query results but remain in the database and in complete verification scans. This preserves hash-chain evidence and avoids pretending that physical deletion is compatible with the current globally linked chain. Database privileges must prevent application users from changing `recorded_at` or `archived_at` directly; these operational fields are outside both hash versions' assignment-event content commitments.
+
+## Redaction path
+
+Redaction locks a version-2 event, validates requested leaf-only JSON Pointers against its proof map, replaces each value with its original commitment marker, and removes the corresponding salt. Unredacted leaves remain independently recomputable; redacted leaves reconstruct their original commitment without retaining disclosure material. Any changed value, proof, path structure, or marker is reported as `PAYLOAD_PROOF_MISMATCH` during chain verification.
+
+The payload update and an `AUDIT_PAYLOAD_REDACTED` receipt append occur in one transaction. The receipt discloses no removed values and records the target event, paths, commitments, stated actor, and reason. Authentication will replace the caller-supplied actor with verified principal identity in the security milestone. Database backups, replicas, and logs require separate erasure governance because transactional redaction cannot remove historical copies outside the active database.
 
 ## Database profiles
 

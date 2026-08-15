@@ -31,7 +31,8 @@ public class AuditChainVerifier {
                         AuditChainViolation.SEQUENCE_GAP,
                         "Expected sequence " + expectedSequence + " but found " + event.sequenceNumber());
             }
-            if (event.hashVersion() != AuditHashService.HASH_VERSION) {
+            if (event.hashVersion() != AuditHashService.HASH_VERSION
+                    && event.hashVersion() != AuditHashService.CURRENT_HASH_VERSION) {
                 return invalid(
                         verifiedCount,
                         chainHeadSequence,
@@ -48,7 +49,21 @@ public class AuditChainVerifier {
                         "Stored previous hash does not match the preceding record hash");
             }
 
-            var expectedHashes = hashService.calculate(event.content(), expectedPreviousHash);
+            AuditHashes expectedHashes;
+            try {
+                expectedHashes = hashService.calculateForVerification(
+                        event.content(),
+                        expectedPreviousHash,
+                        event.hashVersion(),
+                        event.payloadProofs());
+            } catch (InvalidPayloadProofException exception) {
+                return invalid(
+                        verifiedCount,
+                        chainHeadSequence,
+                        event.sequenceNumber(),
+                        AuditChainViolation.PAYLOAD_PROOF_MISMATCH,
+                        exception.getMessage());
+            }
             if (!expectedHashes.contentHash().equals(event.contentHash())) {
                 return invalid(
                         verifiedCount,

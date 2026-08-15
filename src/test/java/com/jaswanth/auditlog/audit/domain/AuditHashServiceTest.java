@@ -18,7 +18,8 @@ class AuditHashServiceTest {
 
     @BeforeEach
     void setUp() {
-        hashService = new AuditHashService(new CanonicalEventSerializer(new ObjectMapper()));
+        var serializer = new CanonicalEventSerializer(new ObjectMapper());
+        hashService = new AuditHashService(serializer, new PayloadCommitmentService(serializer));
     }
 
     @Test

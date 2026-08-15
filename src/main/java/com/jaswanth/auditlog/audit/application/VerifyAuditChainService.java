@@ -64,6 +64,7 @@ public class VerifyAuditChainService {
                 content,
                 entity.getContentHash(),
                 entity.getPreviousHash(),
-                entity.getRecordHash());
+                entity.getRecordHash(),
+                entity.getPayloadProofs());
     }
 }

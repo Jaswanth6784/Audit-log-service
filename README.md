@@ -4,7 +4,7 @@ Production-oriented prototype of an append-only, tamper-evident audit log servic
 
 ## Current milestone
 
-Milestone 5 provides immutable event append, filtered sequence-ordered reads, complete hash-chain verification, and configurable soft-archive retention. Redaction and export remain intentionally deferred to later reviewed milestones.
+Milestone 6 provides immutable event append, filtered sequence-ordered reads, complete hash-chain verification, configurable soft-archive retention, and commitment-based payload redaction. Verifiable export remains intentionally deferred to a later reviewed milestone.
 
 ## Prerequisites
 
@@ -110,6 +110,29 @@ audit:
 ```
 
 Set `audit.retention.enabled=true` to enable the scheduler. Each invocation processes at most one batch, preventing a large backlog from creating an unbounded database transaction. Environment variables such as `AUDIT_RETENTION_ENABLED`, `AUDIT_RETENTION_MAX_AGE`, `AUDIT_RETENTION_BATCH_SIZE`, and `AUDIT_RETENTION_FIXED_DELAY` can override these settings.
+
+## Redact sensitive payload leaves
+
+New events use hash version 2 and create a salted commitment for every JSON payload leaf. Redaction replaces selected values with commitment markers and destroys their 256-bit salts, while verification reconstructs the same committed payload tree. Hash-version-1 events remain verifiable but cannot be safely redacted and return HTTP 409.
+
+Use the event UUID returned by the append request and RFC 6901 JSON Pointer paths:
+
+```text
+POST http://localhost:8080/audit/events/{eventId}/redactions
+Content-Type: application/json
+```
+
+```json
+{
+  "actorId": "privacy-officer-1",
+  "reason": "approved data-subject request",
+  "paths": ["/customer/ssn", "/payment/cardNumber"]
+}
+```
+
+Only leaf paths can be redacted. The operation uses a database lock so concurrent requests cannot lose changes. It also atomically appends an `AUDIT_PAYLOAD_REDACTED` receipt containing the target, paths, commitments, actor, and reason; the response returns that receipt's event ID. Until authentication is implemented, `actorId` is caller supplied and must not be treated as verified identity.
+
+The original value and salt are not recoverable through the service after a successful commit. Back up and restore policies must account for privacy erasure requirements because an older database backup can still contain pre-redaction material.
 
 ## Optional PostgreSQL setup
 

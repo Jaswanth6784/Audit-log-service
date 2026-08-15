@@ -1,6 +1,9 @@
 package com.jaswanth.auditlog.shared.error;
 
 import com.jaswanth.auditlog.audit.application.InvalidAuditQueryException;
+import com.jaswanth.auditlog.redaction.application.AuditEventNotFoundException;
+import com.jaswanth.auditlog.redaction.application.InvalidRedactionException;
+import com.jaswanth.auditlog.redaction.application.UnsupportedRedactionException;
 import jakarta.validation.ConstraintViolationException;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ProblemDetail;
@@ -21,6 +24,20 @@ public class ApiExceptionHandler {
     ProblemDetail handleConstraintViolation(ConstraintViolationException exception) {
         var problem = ProblemDetail.forStatusAndDetail(HttpStatus.BAD_REQUEST, exception.getMessage());
         problem.setTitle("Request validation failed");
+        return problem;
+    }
+
+    @ExceptionHandler(AuditEventNotFoundException.class)
+    ProblemDetail handleAuditEventNotFound(AuditEventNotFoundException exception) {
+        var problem = ProblemDetail.forStatusAndDetail(HttpStatus.NOT_FOUND, exception.getMessage());
+        problem.setTitle("Audit event not found");
+        return problem;
+    }
+
+    @ExceptionHandler({InvalidRedactionException.class, UnsupportedRedactionException.class})
+    ProblemDetail handleRedactionConflict(RuntimeException exception) {
+        var problem = ProblemDetail.forStatusAndDetail(HttpStatus.CONFLICT, exception.getMessage());
+        problem.setTitle("Audit event cannot be redacted");
         return problem;
     }
 }

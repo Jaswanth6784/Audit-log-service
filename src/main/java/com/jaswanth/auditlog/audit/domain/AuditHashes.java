@@ -7,5 +7,6 @@ public record AuditHashes(
         String contentHash,
         String previousHash,
         String recordHash,
-        Map<String, Object> canonicalPayload) {
+        Map<String, Object> canonicalPayload,
+        Map<String, Object> payloadProofs) {
 }

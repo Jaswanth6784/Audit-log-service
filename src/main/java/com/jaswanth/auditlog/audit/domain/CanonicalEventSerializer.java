@@ -20,18 +20,34 @@ public class CanonicalEventSerializer {
 
     public CanonicalEvent serialize(AuditEventContent event) {
         var canonicalPayload = canonicalizeMap(event.payload());
+        return serialize(event, canonicalPayload);
+    }
+
+    CanonicalEvent serialize(AuditEventContent event, Map<String, Object> payloadRepresentation) {
         var canonicalEvent = new TreeMap<String, Object>();
         canonicalEvent.put("actorId", event.actorId());
         canonicalEvent.put("eventType", event.eventType());
-        canonicalEvent.put("payload", canonicalPayload);
+        canonicalEvent.put("payload", payloadRepresentation);
         canonicalEvent.put("resourceId", event.resourceId());
         canonicalEvent.put("resourceType", event.resourceType());
         canonicalEvent.put("timestamp", event.timestamp().toString());
 
         try {
-            return new CanonicalEvent(objectMapper.writeValueAsBytes(canonicalEvent), canonicalPayload);
+            return new CanonicalEvent(objectMapper.writeValueAsBytes(canonicalEvent), payloadRepresentation);
         } catch (JacksonException exception) {
             throw new IllegalArgumentException("Event payload cannot be serialized canonically", exception);
+        }
+    }
+
+    Map<String, Object> canonicalizePayload(Map<String, Object> source) {
+        return canonicalizeMap(source);
+    }
+
+    byte[] serializeCanonicalValue(Object value) {
+        try {
+            return objectMapper.writeValueAsBytes(canonicalizeValue(value));
+        } catch (JacksonException exception) {
+            throw new IllegalArgumentException("Payload value cannot be serialized canonically", exception);
         }
     }
 
@@ -41,7 +57,7 @@ public class CanonicalEventSerializer {
         return result;
     }
 
-    private Object canonicalizeValue(Object value) {
+    Object canonicalizeValue(Object value) {
         if (value instanceof Map<?, ?> map) {
             var result = new TreeMap<String, Object>();
             map.forEach((key, nestedValue) -> {

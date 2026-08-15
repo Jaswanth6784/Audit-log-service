@@ -49,3 +49,12 @@ This log records material AI assistance and the engineer's decision for traceabi
 - Engineer decision: Reviewed and explicitly approved for commit and push on 2026-08-15.
 - Design boundary: The scheduler handles one batch per invocation, ordinary queries exclude archived rows, and verification still scans them. The administrative endpoint is deliberately unsecured only until the planned security milestone.
 - Validation: Retention integration coverage archives three eligible events across two bounded runs, confirms an empty repeat run is harmless, confirms archived rows disappear from reads, and verifies all four stored events still form a valid chain.
+
+## 2026-08-15 - Milestone 6 payload redaction
+
+- Intent: Remove selected sensitive structured payload values without invalidating tamper evidence.
+- AI contribution: Proposed and implemented backward-compatible hash version 2, per-leaf salted commitments, RFC 6901 path handling, irreversible salt removal, proof-aware verification, pessimistic redaction locking, an atomic redaction receipt event, Flyway proof storage, API errors, tests, and an ADR.
+- Engineer decision: Reviewed and explicitly approved for commit and push on 2026-08-15.
+- Modifications after validation: Removed test-only constructor overloads after Spring correctly rejected ambiguous component construction. Added an atomic `AUDIT_PAYLOAD_REDACTED` receipt so successful privacy mutations carry target, commitment, actor, and reason evidence in the chain.
+- Design boundary: Version-1 events remain verifiable but return HTTP 409 for redaction. Only exact leaf paths are supported. Caller-supplied actor identity remains untrusted until security is implemented, and historical backups require separate erasure controls.
+- Validation: Unit tests cover nested objects, arrays, escaped JSON Pointer tokens, changed values, unknown paths, repeat attempts, mixed hash versions, and proof violations. End-to-end coverage confirms plaintext and salt removal, receipt creation, HTTP error behavior, and a valid chain after redaction.

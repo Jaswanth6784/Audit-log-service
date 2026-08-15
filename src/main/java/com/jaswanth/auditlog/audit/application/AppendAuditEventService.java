@@ -50,7 +50,7 @@ public class AppendAuditEventService {
                 command.resourceId(),
                 command.payload(),
                 timestamp);
-        var hashes = hashService.calculate(content, chainHead.getLastHash());
+        var hashes = hashService.calculateCurrent(content, chainHead.getLastHash());
 
         var entity = AuditEventEntity.create(
                 UUID.randomUUID(),

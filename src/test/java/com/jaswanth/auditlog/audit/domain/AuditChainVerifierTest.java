@@ -17,7 +17,8 @@ class AuditChainVerifierTest {
 
     @BeforeEach
     void setUp() {
-        hashService = new AuditHashService(new CanonicalEventSerializer(new ObjectMapper()));
+        var serializer = new CanonicalEventSerializer(new ObjectMapper());
+        hashService = new AuditHashService(serializer, new PayloadCommitmentService(serializer));
         verifier = new AuditChainVerifier(hashService);
     }
 
@@ -90,6 +91,50 @@ class AuditChainVerifierTest {
         var hashMismatch = verifier.verify(List.of(first).iterator(), 1, "f".repeat(64));
         assertThat(hashMismatch.violationType()).isEqualTo(AuditChainViolation.CHAIN_HEAD_HASH_MISMATCH);
         assertThat(hashMismatch.firstInvalidSequence()).isEqualTo(1);
+    }
+
+    @Test
+    void verifiesMixedHashVersionsAndClassifiesPayloadProofTampering() {
+        var first = stored(1, content("version-one"), AuditHashService.GENESIS_HASH);
+        var secondContent = content("version-two");
+        var secondHashes = hashService.calculateCurrent(secondContent, first.recordHash());
+        var second = new StoredAuditEvent(
+                2,
+                secondHashes.hashVersion(),
+                new AuditEventContent(
+                        secondContent.eventType(),
+                        secondContent.actorId(),
+                        secondContent.resourceType(),
+                        secondContent.resourceId(),
+                        secondHashes.canonicalPayload(),
+                        secondContent.timestamp()),
+                secondHashes.contentHash(),
+                secondHashes.previousHash(),
+                secondHashes.recordHash(),
+                secondHashes.payloadProofs());
+
+        var valid = verifier.verify(List.of(first, second).iterator(), 2, second.recordHash());
+        assertThat(valid.valid()).isTrue();
+
+        var tamperedPayload = Map.<String, Object>of("value", "attacker");
+        var tampered = new StoredAuditEvent(
+                second.sequenceNumber(),
+                second.hashVersion(),
+                new AuditEventContent(
+                        second.content().eventType(),
+                        second.content().actorId(),
+                        second.content().resourceType(),
+                        second.content().resourceId(),
+                        tamperedPayload,
+                        second.content().timestamp()),
+                second.contentHash(),
+                second.previousHash(),
+                second.recordHash(),
+                second.payloadProofs());
+        var invalid = verifier.verify(List.of(first, tampered).iterator(), 2, second.recordHash());
+        assertThat(invalid.violationType()).isEqualTo(AuditChainViolation.PAYLOAD_PROOF_MISMATCH);
+        assertThat(invalid.firstInvalidSequence()).isEqualTo(2);
+        assertThat(invalid.verifiedEventCount()).isEqualTo(1);
     }
 
     private void assertViolation(

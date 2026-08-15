@@ -40,8 +40,12 @@ public class AuditEventEntity {
     private String resourceId;
 
     @JdbcTypeCode(SqlTypes.JSON)
-    @Column(name = "payload", nullable = false, updatable = false, columnDefinition = "json")
+    @Column(name = "payload", nullable = false, columnDefinition = "json")
     private Map<String, Object> payload;
+
+    @JdbcTypeCode(SqlTypes.JSON)
+    @Column(name = "payload_proofs", columnDefinition = "json")
+    private Map<String, Object> payloadProofs;
 
     @Column(name = "occurred_at", nullable = false, updatable = false)
     private Instant occurredAt;
@@ -67,6 +71,9 @@ public class AuditEventEntity {
     @Column(name = "redacted", nullable = false)
     private boolean redacted;
 
+    @Column(name = "redacted_at")
+    private Instant redactedAt;
+
     protected AuditEventEntity() {
     }
 
@@ -77,6 +84,7 @@ public class AuditEventEntity {
         this.resourceType = content.resourceType();
         this.resourceId = content.resourceId();
         this.payload = hashes.canonicalPayload();
+        this.payloadProofs = hashes.payloadProofs();
         this.occurredAt = content.timestamp();
         this.recordedAt = recordedAt;
         this.hashVersion = hashes.hashVersion();
@@ -121,6 +129,10 @@ public class AuditEventEntity {
         return payload;
     }
 
+    public Map<String, Object> getPayloadProofs() {
+        return payloadProofs;
+    }
+
     public Instant getOccurredAt() {
         return occurredAt;
     }
@@ -143,5 +155,20 @@ public class AuditEventEntity {
 
     public String getRecordHash() {
         return recordHash;
+    }
+
+    public boolean isRedacted() {
+        return redacted;
+    }
+
+    public Instant getRedactedAt() {
+        return redactedAt;
+    }
+
+    public void redact(Map<String, Object> redactedPayload, Map<String, Object> updatedProofs, Instant timestamp) {
+        this.payload = redactedPayload;
+        this.payloadProofs = updatedProofs;
+        this.redacted = true;
+        this.redactedAt = timestamp;
     }
 }

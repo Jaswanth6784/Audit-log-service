@@ -143,13 +143,16 @@ class AuditEventAppendIntegrationTest {
         var expectedPreviousHash = AuditHashService.GENESIS_HASH;
         for (var event : events) {
             assertThat(event.getPreviousHash()).isEqualTo(expectedPreviousHash);
-            var recomputed = hashService.calculate(new AuditEventContent(
+            var recomputed = hashService.calculateForVerification(new AuditEventContent(
                     event.getEventType(),
                     event.getActorId(),
                     event.getResourceType(),
                     event.getResourceId(),
                     event.getPayload(),
-                    event.getOccurredAt()), expectedPreviousHash);
+                    event.getOccurredAt()),
+                    expectedPreviousHash,
+                    event.getHashVersion(),
+                    event.getPayloadProofs());
             assertThat(event.getContentHash()).isEqualTo(recomputed.contentHash());
             assertThat(event.getRecordHash()).isEqualTo(recomputed.recordHash());
             expectedPreviousHash = event.getRecordHash();
